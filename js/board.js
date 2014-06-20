@@ -198,7 +198,7 @@ var BOARD = function board_init(el, options)
     
     function is_piece_moveable(piece)
     {
-        return board.mode === "setup" || (board.mode === "play" && board.legal_moves && board.turn === piece.color);
+        return board.mode === "setup" || (board.mode === "play" && board.legal_moves && board.turn === piece.color && board.players[board.turn].type === "human");
     }
     
     function add_piece_events(piece)
@@ -277,7 +277,9 @@ var BOARD = function board_init(el, options)
     
     function get_move(starting, ending)
     {
-        return get_file_letter(starting.file) + (parseInt(starting.rank, 10) + 1) + get_file_letter(ending.file) + (parseInt(ending.rank, 10) + 1);
+        if (starting && ending) {
+            return get_file_letter(starting.file) + (parseInt(starting.rank, 10) + 1) + get_file_letter(ending.file) + (parseInt(ending.rank, 10) + 1);
+        }
     }
     
     function report_move(move, is_promoting)
@@ -365,12 +367,79 @@ var BOARD = function board_init(el, options)
         board.el.classList.add("playing");
     }
     
+    function get_piece_from_square(square)
+    {
+        var i,
+            node;
+        
+        console.log(square.childNodes);
+        
+        for (i = 0; i < square.childNodes.length; i += 1) {
+            node = square.childNodes[i];
+            if (node.classList && node.classList.contains("piece")) {
+               return node;
+            }
+        };
+    }
+    
+    function split_uci(uci)
+    {
+        var positions = {
+            starting: {
+                file: uci.charCodeAt(0) - 97,
+                rank: parseInt(uci[1], 10) - 1
+            },
+            ending: {
+                file: uci.charCodeAt(2) - 97,
+                rank: parseInt(uci[3], 10) - 1
+            }
+        };
+        
+        if (uci.length === 5) {
+            positions.promote_to = uci[4];
+        }
+        
+        return positions;
+    }
+    
+    function move_piece(uci)
+    {
+        //console.log(uci)
+        var positions = split_uci(uci),
+            piece;
+        
+        //console.log(positions);
+        //console.log(squares[positions.starting.rank][positions.starting.file]);
+        piece = get_piece_from_square(squares[positions.starting.rank][positions.starting.file]);
+        
+        console.log(piece);
+        
+        squares[positions.ending.rank][positions.ending.file].appendChild(piece);
+    }
+    
+    function move(uci)
+    {
+        board.moves.push(uci);
+        move_piece(uci);
+        switch_turn();
+    }
+    
     board = {
         size_board: size_board,
         theme: "default",
         mode: "setup",
         wait: wait,
         play: play,
+        move: move,
+        players: {
+            w: {
+                type: "human",
+            },
+            b: {
+                type: "ai",
+            }
+        }
+    /// moves: []
     /// legal_move[]
     /// onmove()
     };

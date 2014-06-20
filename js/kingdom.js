@@ -139,6 +139,17 @@
         });
     }
     
+    function set_legal_moves(cb)
+    {
+        get_legal_moves(function onget(moves)
+        {
+            board.legal_moves = moves;
+            if (cb) {
+                cb();
+            }
+        });
+    }
+    
     function onengine_move(str)
     {
         //console.log("done: " + str);
@@ -152,6 +163,10 @@
         game.ai_ponder = res[2];
         
         board.move(res[1]);
+        set_ai_position();
+        ///TODO: FIx race conditions.
+        ///NOTE: We don't need to check for legal moves if there are two ai's.
+        set_legal_moves();
     }
     
     function onthinking(str)
@@ -159,9 +174,17 @@
         //console.log("thinking: " + str);
     }
     
-    function tell_engine_to_move()
+    function set_ai_position()
     {
         engine.send("position startpos moves " + board.moves.join(" "));
+        
+        ///NOTE: We need to get legal moves because we need to know if a move is castling or not.
+        set_legal_moves();
+    }
+    
+    function tell_engine_to_move()
+    {
+        set_ai_position();
         
         //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
         /// Without time, it thinks really fast.
@@ -178,15 +201,14 @@
     
     function start_new_game()
     {
-        game = {};
+        board.moves = [];
         
         engine.send("ucinewgame");
         
-        get_legal_moves(function onget(moves)
+        set_legal_moves(function onset()
         {
             loading_el.classList.add("hidden");
             board.play();
-            board.legal_moves = moves;
         });
     }
     
