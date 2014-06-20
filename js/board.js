@@ -305,6 +305,23 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function move_piece(piece, square)
+    {
+        var captured_piece;
+        
+        square.el.appendChild(piece.el);
+        
+        captured_piece = get_piece_from_rank_file(square.rank, square.file);
+        
+        if (captured_piece) {
+            capture(captured_piece);
+        }
+        
+        /// Make sure to change the rank and file after checking for a capured piece so that you don't capture yourself.
+        piece.rank = square.rank;
+        piece.file = square.file;
+    }
+    
     function onmouseup(e)
     {
         var square,
@@ -317,10 +334,7 @@ var BOARD = function board_init(el, options)
             move = get_move(board.dragging.piece, square);
             
             if (square && is_legal_move(move)) {
-                /// Move piece
-                square.el.appendChild(board.dragging.piece.el);
-                board.dragging.piece.rank = square.rank;
-                board.dragging.piece.file = square.file;
+                move_piece(board.dragging.piece, square)
                 report_move(move, square.rank === 7);
             } else {
                 /// Snap back.
@@ -369,17 +383,15 @@ var BOARD = function board_init(el, options)
         board.el.classList.add("playing");
     }
     
-    function get_piece_from_square(square)
+    function get_piece_from_rank_file(rank, file)
     {
-        var i,
-            node;
+        var i;
         
-        for (i = 0; i < square.childNodes.length; i += 1) {
-            node = square.childNodes[i];
-            if (node.classList && node.classList.contains("piece")) {
-               return node;
+        for (i = pieces.length - 1; i >= 0; i -= 1) {
+            if (!pieces[i].captured && pieces[i].rank === rank && pieces[i].file === file) {
+                return pieces[i];
             }
-        };
+        }
     }
     
     function split_uci(uci)
@@ -402,20 +414,34 @@ var BOARD = function board_init(el, options)
         return positions;
     }
     
-    function move_piece(uci)
+    function capture(piece)
+    {
+        piece.captured = true;
+        piece.el.classList.add("captured");
+    }
+    
+    function move_piece_uci(uci)
     {
         var positions = split_uci(uci),
-            piece;
+            piece,
+            captured_piece,
+            ending_square;
         
-        piece = get_piece_from_square(squares[positions.starting.rank][positions.starting.file]);       
+        ending_square = {
+            el: squares[positions.ending.rank][positions.ending.file],
+            rank: positions.ending.rank,
+            file: positions.ending.file
+        };
         
-        squares[positions.ending.rank][positions.ending.file].appendChild(piece);
+        piece = get_piece_from_rank_file(positions.starting.rank, positions.starting.file);
+        
+        move_piece(piece, ending_square);
     }
     
     function move(uci)
     {
         board.moves.push(uci);
-        move_piece(uci);
+        move_piece_uci(uci);
         switch_turn();
     }
     

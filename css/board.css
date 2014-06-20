@@ -73,8 +73,8 @@
     background-repeat: no-repeat;
     background-position: center;
     cursor: pointer!important;
-    -webkit-transition: -webkit-transform 200ms;
-            transition: transform 200ms;
+    -webkit-transition: all 200ms;
+            transition: all 200ms;
 }
 
 .chess_board.waiting .piece {
@@ -100,4 +100,9 @@
 
 .chess_board.waiting {
     opacity: .5;
+}
+
+.captured {
+    opacity: 0;
+    pointer-events: none;
 }

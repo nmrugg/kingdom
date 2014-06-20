@@ -125,15 +125,19 @@
         engine.send("d", function ond(str)
         {
             var san = str.match(/Legal moves\:(.*)/),
-                uci = str.match(/Legal uci moves\:(.*)/);
+                uci = str.match(/Legal uci moves\:(.*)/),
+                checkers = str.match(/Checkers\:(.*)/);
             
-            if (!san || !uci) {
+            console.log(str);
+            
+            if (!san || !uci || !checkers) {
                 error("Invalid d response: " + str);
             }
             
             cb({
                 san: san[1].trim().split(" "),
                 uci: uci[1].trim().split(" "),
+                checkers: checkers[1].trim().split(" "),
             });
             
         });
@@ -143,9 +147,19 @@
     {
         get_legal_moves(function onget(moves)
         {
-            board.legal_moves = moves;
-            if (cb) {
-                cb();
+            /// Is the game still on?
+            if (moves.uci.length) {
+                board.legal_moves = moves;
+                if (cb) {
+                    cb();
+                }
+            } else {
+                /// Was it checkmate?
+                if (moves.checkers.length) {
+                    alert("Checkmate!");
+                } else {
+                    alert("Stalemate!");
+                }
             }
         });
     }
