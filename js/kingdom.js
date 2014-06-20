@@ -6,6 +6,14 @@
         engine,
         evaler;
     
+    function error(str)
+    {
+        str = str || "Unknown error";
+        
+        alert("An error occured.\n" + str);
+        throw new Error(str);
+    }
+    
     function load_engine()
     {
         var worker = new Worker("js/stockfish.js"),
@@ -104,24 +112,47 @@
         board.size_board(w * .9, h * .9);
     }
     
+    function get_legal_moves(cb)
+    {
+        engine.send("d", function ond(str)
+        {
+            var san = str.match(/Legal moves\:(.*)/),
+                uci = str.match(/Legal uci moves\:(.*)/);
+            
+            if (!san || !uci) {
+                error("Invalid d response: " + str);
+            }
+            
+            cb({
+                san: san[1].trim().split(" "),
+                uci: uci[1].trim().split(" "),
+            });
+            
+        });
+    }
+    
     function init()
     {
         onresize();
         
         window.addEventListener("resize", onresize);
         
-        board.mode = "wait";
+        board.wait();
         
         engine = load_engine();
         evaler = load_engine();
         
-        console.log("Loading stockfish");
-        
         engine.send("uci", function onuci(str)
         {
+            //console.log(str);
             engine.send("isready", function onready()
             {
-                board.mode = "play";
+                console.log("ready");
+                get_legal_moves(function (moves)
+                {
+                    board.play();
+                    board.set_legal_moves(moves);
+                });
             });
         });
     }

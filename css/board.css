@@ -4,6 +4,9 @@
     display: table;
     border: 2px solid #3c2d21;
     
+    -webkit-transition: opacity 300ms;
+            transition: opacity 300ms;
+    
     -webkit-touch-callout: none;
       -webkit-user-select: none;
        -khtml-user-select: none;
@@ -74,6 +77,10 @@
             transition: transform 200ms;
 }
 
+.chess_board.waiting .piece {
+    cursor: default!important;
+}
+
 
 /* See through the pieces to get the square underneath. */
 .chess_board.dragging .piece {
@@ -89,4 +96,8 @@
     
     -webkit-transition: none!important;
             transition: none!important;
+}
+
+.chess_board.waiting {
+    opacity: .5;
 }

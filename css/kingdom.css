@@ -1,3 +1,7 @@
 html, body {
     margin: 0;
 }
+
+.chess_board {
+    margin: 0 auto;
+}

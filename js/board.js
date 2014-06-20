@@ -11,7 +11,8 @@ var BOARD = function board_init(el, options)
             files: 8,
         },
         squares,
-        pos;
+        pos,
+        legal_moves;
     
     function error(str)
     {
@@ -184,7 +185,7 @@ var BOARD = function board_init(el, options)
     
     function is_piece_moveable(piece)
     {
-        return board.mode === "setup" || (board.mode === "play" && board.turn === piece.color);
+        return board.mode === "setup" || (board.mode === "play" && legal_moves && board.turn === piece.color);
     }
     
     function add_piece_events(piece)
@@ -297,10 +298,33 @@ var BOARD = function board_init(el, options)
         });
     }
     
+    function wait()
+    {
+        board.mode = "wait";
+        board.el.classList.add("waiting");
+        board.el.classList.remove("playing");
+    }
+    
+    function play()
+    {
+        board.turn = "w";
+        board.mode = "play";
+        board.el.classList.remove("waiting");
+        board.el.classList.add("playing");
+    }
+    
+    function set_legal_moves(moves)
+    {
+        legal_moves = moves;
+    }
+    
     board = {
         size_board: size_board,
         theme: "default",
         mode: "setup",
+        wait: wait,
+        play: play,
+        set_legal_moves: set_legal_moves,
     };
     
     options = options || {};
