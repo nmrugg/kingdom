@@ -1,0 +1,26 @@
+.chess_board {
+    width: 100%;
+    height: 100%;
+    display: table;
+    border: 2px solid #3c2d21;
+}
+
+.chess_board .rank {
+    width: 100%;
+    height: 12.5%;
+    display: table-row;
+}
+
+.chess_board .square {
+    width: 12.5%;
+    height: 12.5%;
+    display: table-cell;
+}
+
+.chess_board .square.light {
+    background-color: #F0D9B5;
+}
+
+.chess_board .square.dark {
+    background-color: #B58863;
+}
