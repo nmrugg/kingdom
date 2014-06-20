@@ -5,3 +5,19 @@ html, body {
 .chess_board {
     margin: 0 auto;
 }
+
+.loading {
+    position: absolute;
+    top: 25%;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    text-align: center;
+    font-size: 40px;
+    font-family: arial, sans, sans-serif;
+    opacity: .8;
+}
+
+.hidden {
+    display: none;
+}

@@ -133,6 +133,13 @@
     
     function init()
     {
+        var loading_el = document.createElement("div");
+        
+        loading_el.textContent = "Loading...";
+        loading_el.classList.add("loading");
+        
+        document.documentElement.appendChild(loading_el);
+        
         onresize();
         
         window.addEventListener("resize", onresize);
@@ -150,6 +157,7 @@
                 console.log("ready");
                 get_legal_moves(function (moves)
                 {
+                    loading_el.classList.add("hidden");
                     board.play();
                     board.set_legal_moves(moves);
                 });

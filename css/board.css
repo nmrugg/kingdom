@@ -88,7 +88,7 @@
 }
 /* Since we can see through the piece, we need the squares to have the pointer cursor. */
 .chess_board.dragging .square {
-    cursor: pointer!important;
+    cursor: move!important;
 }
 
 .piece.dragging {
