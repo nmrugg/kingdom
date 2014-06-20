@@ -131,6 +131,11 @@
         });
     }
     
+    function onmove(move)
+    {
+        console.log(move);
+    }
+    
     function init()
     {
         var loading_el = document.createElement("div");
@@ -146,6 +151,8 @@
         
         board.wait();
         
+        board.onmove = onmove;
+        
         engine = load_engine();
         evaler = load_engine();
         
@@ -159,7 +166,7 @@
                 {
                     loading_el.classList.add("hidden");
                     board.play();
-                    board.set_legal_moves(moves);
+                    board.legal_moves = moves;
                 });
             });
         });

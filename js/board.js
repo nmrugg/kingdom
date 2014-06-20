@@ -11,8 +11,7 @@ var BOARD = function board_init(el, options)
             files: 8,
         },
         squares,
-        pos,
-        legal_moves;
+        pos;
     
     function error(str)
     {
@@ -85,15 +84,29 @@ var BOARD = function board_init(el, options)
         return el;
     }
     
+    function get_file_letter(num)
+    {
+        return String.fromCharCode(97 + num);
+    }
+    
     function make_board_letter(num)
     {
         var el = document.createElement("div");
         
         el.classList.add("notation");
         el.classList.add("letter");
-        el.textContent = String.fromCharCode(97 + num);
+        el.textContent = get_file_letter(num);
         
         return el;
+    }
+    
+    function switch_turn()
+    {
+        if (board.turn === "w") {
+            board.turn = "b";
+        } else {
+            board.turn = "w";
+        }
     }
     
     function create_board(el, dim)
@@ -185,7 +198,7 @@ var BOARD = function board_init(el, options)
     
     function is_piece_moveable(piece)
     {
-        return board.mode === "setup" || (board.mode === "play" && legal_moves && board.turn === piece.color);
+        return board.mode === "setup" || (board.mode === "play" && board.legal_moves && board.turn === piece.color);
     }
     
     function add_piece_events(piece)
@@ -255,17 +268,56 @@ var BOARD = function board_init(el, options)
         
     }
     
+    function is_legal_move(uci)
+    {
+        ///TODO: Determine how to underpromote.
+        ///      We should first make sure it's a legal move before even asking.
+        return board.legal_moves.uci.indexOf(uci) > -1;
+    }
+    
+    function get_move(starting, ending)
+    {
+        return get_file_letter(starting.file) + (parseInt(starting.rank, 10) + 1) + get_file_letter(ending.file) + (parseInt(ending.rank, 10) + 1);
+    }
+    
+    function report_move(move, is_promoting)
+    {
+        /// We make it async because of promotion.
+        function record()
+        {
+            switch_turn();
+            
+            delete board.legal_moves;
+            
+            if (board.onmove) {
+                board.onmove(move);
+            }
+        }
+        
+        if (is_promoting) {
+            ///TODO: Ask...
+            move += "q"; /// For now, defaulting to queen.
+            setTimeout(record, 10);
+        } else {
+            setTimeout(record, 10);
+        }
+    }
+    
     function onmouseup(e)
     {
-        var square;
+        var square,
+            move;
         
         if (board.dragging && board.dragging.piece) {
             ///TODO: Move it
             square = get_hovering_square(e);
             
-            if (square) {
-                //console.log(square)
+            move = get_move(board.dragging.piece, square);
+            
+            if (square && is_legal_move(move)) {
+                ///TODO: Underpromotion
                 square.el.appendChild(board.dragging.piece.el);
+                report_move(move, square.rank === 7);
             } else {
                 /// Snap back.
                 ///TODO: Be able to remove pieces in setup mode.
@@ -313,18 +365,14 @@ var BOARD = function board_init(el, options)
         board.el.classList.add("playing");
     }
     
-    function set_legal_moves(moves)
-    {
-        legal_moves = moves;
-    }
-    
     board = {
         size_board: size_board,
         theme: "default",
         mode: "setup",
         wait: wait,
         play: play,
-        set_legal_moves: set_legal_moves,
+    /// legal_move[]
+    /// onmove()
     };
     
     options = options || {};
