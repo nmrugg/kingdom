@@ -72,7 +72,10 @@
             transition: translate 200ms;
 }
 
-.no_transition {
+.dragging {
+    z-index: 1;
+    /*
     -webkit-transition: none;
             transition: none;
+    */
 }

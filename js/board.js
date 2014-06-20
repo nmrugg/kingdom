@@ -188,22 +188,31 @@ var BOARD = function board_init(el, options)
             if (is_piece_moveable(piece)) {
                 board.dragging_piece = piece;
                 board.dragging_origin = {x: e.clientX, y: e.clientY};
+                piece.el.classList.add("dragging");
             }
         });
     }
     
     function onmousemove(e)
     {
+        var css;
+        
         if (board.dragging_piece) {
-            console.log(board.dragging_piece.color + board.dragging_piece.type, board.dragging_origin);
+            //console.log(board.dragging_piece.color + board.dragging_piece.type, board.dragging_origin);
+            css = "translate(" + (e.clientX - board.dragging_origin.x) + "px," + (e.clientY - board.dragging_origin.y) + "px)";
+            board.dragging_piece.el.style.transform = css;
+            board.dragging_piece.el.style.WebkitTransform = css;
         }
     }
     
     function onmouseup(e)
     {
-        ///TODO: Move it
-        delete board.dragging_piece;
-        delete board.dragging_origin;
+        if (board.dragging_piece) {
+            ///TODO: Move it
+            board.dragging_piece.el.classList.remove("dragging");
+            delete board.dragging_piece;
+            delete board.dragging_origin;
+        }
     }
     
     function set_board()
