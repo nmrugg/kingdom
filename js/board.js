@@ -305,37 +305,55 @@ var BOARD = function board_init(el, options)
         }
     }
     
-    function move_piece(piece, square)
+    function move_piece(piece, square, uci)
     {
-        var captured_piece;
+        var captured_piece,
+            rook,
+            san,
+            rook_rank = board.turn === "w" ? 0 : 7;
         
         square.el.appendChild(piece.el);
         
+        ///FIXME: This won't get en passant.
         captured_piece = get_piece_from_rank_file(square.rank, square.file);
         
         if (captured_piece) {
             capture(captured_piece);
         }
         
+        /// Is it castling?
+        san = board.legal_moves.san[board.legal_moves.uci.indexOf(uci)];
+        if (san === "O-O") { /// Kingside castle
+            rook = get_piece_from_rank_file(rook_rank, 7);
+            squares[rook_rank][5].appendChild(rook.el);
+            rook.file = 5;
+        } else if (san === "O-O-O") { /// Queenside castle
+            rook = get_piece_from_rank_file(rook_rank, 0);
+            squares[rook_rank][3].appendChild(rook.el);
+            rook.file = 3;
+        }
+        
         /// Make sure to change the rank and file after checking for a capured piece so that you don't capture yourself.
         piece.rank = square.rank;
         piece.file = square.file;
+        
+        ///TODO: Promotion
     }
     
     function onmouseup(e)
     {
         var square,
-            move;
+            uci;
         
         if (board.dragging && board.dragging.piece) {
             ///TODO: Move it
             square = get_hovering_square(e);
             
-            move = get_move(board.dragging.piece, square);
+            uci = get_move(board.dragging.piece, square);
             
-            if (square && is_legal_move(move)) {
-                move_piece(board.dragging.piece, square)
-                report_move(move, square.rank === 7);
+            if (square && is_legal_move(uci)) {
+                move_piece(board.dragging.piece, square, uci)
+                report_move(uci, square.rank === 7);
             } else {
                 /// Snap back.
                 ///TODO: Be able to remove pieces in setup mode.
@@ -387,6 +405,9 @@ var BOARD = function board_init(el, options)
     {
         var i;
         
+        rank = parseInt(rank, 10);
+        file = parseInt(file, 10);
+        
         for (i = pieces.length - 1; i >= 0; i -= 1) {
             if (!pieces[i].captured && pieces[i].rank === rank && pieces[i].file === file) {
                 return pieces[i];
@@ -435,7 +456,7 @@ var BOARD = function board_init(el, options)
         
         piece = get_piece_from_rank_file(positions.starting.rank, positions.starting.file);
         
-        move_piece(piece, ending_square);
+        move_piece(piece, ending_square, uci);
     }
     
     function move(uci)
