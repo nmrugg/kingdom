@@ -6,10 +6,18 @@ var BOARD = function board_init(el, options)
         board,
         board_details = {
             ranks: 8,
-            files: 8
+            files: 8,
         },
         squares,
         pos;
+    
+    function error(str)
+    {
+        str = str || "Unknown error";
+        
+        alert("An error occured.\n" + str);
+        throw new Error(str);
+    }
     
     function check_el(el)
     {
@@ -89,7 +97,6 @@ var BOARD = function board_init(el, options)
     {
         var x,
             y,
-            i = 0,
             cur_rank;
         
         if (new_el) {
@@ -105,21 +112,20 @@ var BOARD = function board_init(el, options)
         }
         
         squares = [];
-        pieces = [];
         
         for (y = board_details.ranks - 1; y >= 0; y -= 1) {
+            squares[y] = [];
             for (x = 0; x < board_details.files; x += 1) {
-                squares[i] = make_square(x, y);
+                squares[y][x] = make_square(x, y);
                 if (x === 0) {
                     cur_rank = make_rank(y);
                     el.appendChild(cur_rank);
-                    squares[i].appendChild(make_board_num(y));
+                    squares[y][x].appendChild(make_board_num(y));
                 }
                 if (y === 0) {
-                    squares[i].appendChild(make_board_letter(x));
+                    squares[y][x].appendChild(make_board_letter(x));
                 }
-                cur_rank.appendChild(squares[i]);
-                i += 1;
+                cur_rank.appendChild(squares[y][x]);
             }
         }
         
@@ -128,10 +134,66 @@ var BOARD = function board_init(el, options)
         return board;
     }
     
+    function load_pieces_from_start()
+    {
+        var fen_pieces = pos.match(/^\S+/),
+            rank = 7,
+            file = 0;
+        
+        ///TODO: Delete old pieces.
+        pieces = [];
+        
+        if (!fen_pieces) {
+            error("Bad position: " + pos);
+        }
+        
+        fen_pieces[0].split("").forEach(function oneach(letter)
+        {
+            var piece;
+            
+            if (letter === "/") {
+                rank -= 1;
+                file = 0;
+            } else if (/\d/.test(letter)) {
+                file += parseInt(letter, 10);
+            } else {
+                /// It's a piece.
+                piece = {};
+                piece.type = letter.toLowerCase();
+                /// Is it white?
+                if (/[A-Z]/.test(letter)) {
+                    piece.color = "w";
+                } else {
+                    piece.color = "b";
+                }
+                piece.rank = rank;
+                piece.file = file;
+                pieces[pieces.length] = piece;
+                file += 1;
+            }
+        });
+    }
+    
     function set_board()
     {
+        load_pieces_from_start();
         
+        pieces.forEach(function (piece)
+        {
+            var el = document.createElement("div");
+            
+            el.classList.add("piece");
+            
+            el.style.backgroundImage = "url(\"" + encodeURI("img/pieces/" + board.theme + "/" + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
+            
+            squares[piece.rank][piece.file].appendChild(el);
+        });
     }
+    
+    board = {
+        size_board: size_board,
+        theme: "default",
+    };
     
     options = options || {};
     
@@ -144,12 +206,6 @@ var BOARD = function board_init(el, options)
     create_board(el, options.dim);
     
     set_board();
-    
-    board = {
-        create_board: create_board,
-        set_board: set_board,
-        size_board: size_board,
-    };
     
     return board;
 };

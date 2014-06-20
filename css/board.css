@@ -38,6 +38,8 @@
     position: absolute;
     pointer-events: none;
     font-family: arial, sans, sans-serif;
+    font-size: 15px;
+    z-index: 10;
 }
 
 .chess_board .square.light .notation {
@@ -55,4 +57,14 @@
 .chess_board .square .num {
     left: 6%;
     top: 5%;
+}
+
+.chess_board .piece {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-size: contain;
+}
 }
