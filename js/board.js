@@ -190,6 +190,10 @@ var BOARD = function board_init(el, options)
                 board.dragging_origin = {x: e.clientX, y: e.clientY};
                 piece.el.classList.add("dragging");
             }
+            if (e.preventDefault) {
+                /// Prevent the cursor from becoming an I beam.
+                e.preventDefault();
+            }
         });
     }
     
