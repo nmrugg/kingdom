@@ -317,8 +317,10 @@ var BOARD = function board_init(el, options)
             move = get_move(board.dragging.piece, square);
             
             if (square && is_legal_move(move)) {
-                ///TODO: Underpromotion
+                /// Move piece
                 square.el.appendChild(board.dragging.piece.el);
+                board.dragging.piece.rank = square.rank;
+                board.dragging.piece.file = square.file;
                 report_move(move, square.rank === 7);
             } else {
                 /// Snap back.
@@ -372,8 +374,6 @@ var BOARD = function board_init(el, options)
         var i,
             node;
         
-        console.log(square.childNodes);
-        
         for (i = 0; i < square.childNodes.length; i += 1) {
             node = square.childNodes[i];
             if (node.classList && node.classList.contains("piece")) {
@@ -404,15 +404,10 @@ var BOARD = function board_init(el, options)
     
     function move_piece(uci)
     {
-        //console.log(uci)
         var positions = split_uci(uci),
             piece;
         
-        //console.log(positions);
-        //console.log(squares[positions.starting.rank][positions.starting.file]);
-        piece = get_piece_from_square(squares[positions.starting.rank][positions.starting.file]);
-        
-        console.log(piece);
+        piece = get_piece_from_square(squares[positions.starting.rank][positions.starting.file]);       
         
         squares[positions.ending.rank][positions.ending.file].appendChild(piece);
     }
