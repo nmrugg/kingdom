@@ -63,6 +63,28 @@ var BOARD = function board_init(el, options)
         el.style.height = board_details.height + "px";
     }
     
+    function make_board_num(num)
+    {
+        var el = document.createElement("div");
+        
+        el.classList.add("notation");
+        el.classList.add("num");
+        el.textContent = num + 1;
+        
+        return el;
+    }
+    
+    function make_board_letter(num)
+    {
+        var el = document.createElement("div");
+        
+        el.classList.add("notation");
+        el.classList.add("letter");
+        el.textContent = String.fromCharCode(97 + num);
+        
+        return el;
+    }
+    
     function create_board(new_el, dim)
     {
         var x,
@@ -91,6 +113,10 @@ var BOARD = function board_init(el, options)
                 if (x === 0) {
                     cur_rank = make_rank(y);
                     el.appendChild(cur_rank);
+                    squares[i].appendChild(make_board_num(y));
+                }
+                if (y === 0) {
+                    squares[i].appendChild(make_board_letter(x));
                 }
                 cur_rank.appendChild(squares[i]);
                 i += 1;

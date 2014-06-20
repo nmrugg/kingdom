@@ -3,6 +3,13 @@
     height: 100%;
     display: table;
     border: 2px solid #3c2d21;
+    
+    -webkit-touch-callout: none;
+      -webkit-user-select: none;
+       -khtml-user-select: none;
+         -moz-user-select: none;
+          -ms-user-select: none;
+              user-select: none;
 }
 
 .chess_board .rank {
@@ -15,6 +22,8 @@
     width: 12.5%;
     height: 12.5%;
     display: table-cell;
+    position: relative;
+    cursor: default;
 }
 
 .chess_board .square.light {
@@ -23,4 +32,27 @@
 
 .chess_board .square.dark {
     background-color: #B58863;
+}
+
+.chess_board .square .notation {
+    position: absolute;
+    pointer-events: none;
+    font-family: arial, sans, sans-serif;
+}
+
+.chess_board .square.light .notation {
+    color: #B58863;
+}
+.chess_board .square.dark .notation {
+    color: #F0D9B5;
+}
+
+.chess_board .square .letter {
+    right: 10%;
+    bottom: 4%;
+}
+
+.chess_board .square .num {
+    left: 6%;
+    top: 5%;
 }
