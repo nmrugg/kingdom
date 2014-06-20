@@ -66,5 +66,13 @@
     left: 0;
     right: 0;
     background-size: contain;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    -webkit-transition: translate 200ms;
+            transition: translate 200ms;
 }
+
+.no_transition {
+    -webkit-transition: none;
+            transition: none;
 }
