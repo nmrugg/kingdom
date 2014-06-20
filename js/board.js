@@ -193,15 +193,20 @@ var BOARD = function board_init(el, options)
         });
     }
     
+    function prefix_css(el, prop, value)
+    {
+        el.style[prop] = value;
+        el.style["Webkit" + prop[0].toUpperCase() + prop.substr(1)] = value;
+        el.style["O" + prop[0].toUpperCase() + prop.substr(1)] = value;
+        el.style["MS" + prop[0].toUpperCase() + prop.substr(1)] = value;
+        el.style["Moz" + prop[0].toUpperCase() + prop.substr(1)] = value;
+    }
+    
     function onmousemove(e)
     {
-        var css;
-        
         if (board.dragging_piece) {
             //console.log(board.dragging_piece.color + board.dragging_piece.type, board.dragging_origin);
-            css = "translate(" + (e.clientX - board.dragging_origin.x) + "px," + (e.clientY - board.dragging_origin.y) + "px)";
-            board.dragging_piece.el.style.transform = css;
-            board.dragging_piece.el.style.WebkitTransform = css;
+            prefix_css(board.dragging_piece.el, "transform", "translate(" + (e.clientX - board.dragging_origin.x) + "px," + (e.clientY - board.dragging_origin.y) + "px)")
         }
     }
     
@@ -209,7 +214,9 @@ var BOARD = function board_init(el, options)
     {
         if (board.dragging_piece) {
             ///TODO: Move it
+            /// Snap back.
             board.dragging_piece.el.classList.remove("dragging");
+            prefix_css(board.dragging_piece.el, "transform", "none");
             delete board.dragging_piece;
             delete board.dragging_origin;
         }
