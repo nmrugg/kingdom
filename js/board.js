@@ -192,10 +192,13 @@ var BOARD = function board_init(el, options)
         piece.el.addEventListener("mousedown", function onpiece_mouse_down(e)
         {
             if (is_piece_moveable(piece)) {
-                board.dragging_piece = piece;
-                board.dragging_origin = {x: e.clientX, y: e.clientY};
+                board.dragging = {};
+                board.dragging.piece = piece;
+                board.dragging.origin = {x: e.clientX, y: e.clientY};
+                board.dragging.box = piece.el.getBoundingClientRect();
+                
                 board.el.classList.add("dragging");
-                board.dragging_piece.el.classList.add("dragging");
+                board.dragging.piece.el.classList.add("dragging");
             }
             if (e.preventDefault) {
                 /// Prevent the cursor from becoming an I beam.
@@ -215,23 +218,57 @@ var BOARD = function board_init(el, options)
     
     function onmousemove(e)
     {
-        if (board.dragging_piece) {
-            //console.log(board.dragging_piece.color + board.dragging_piece.type, board.dragging_origin);
-            prefix_css(board.dragging_piece.el, "transform", "translate(" + (e.clientX - board.dragging_origin.x) + "px," + (e.clientY - board.dragging_origin.y) + "px)")
+        if (board.dragging && board.dragging.piece) {
+            prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)")
         }
+    }
+    
+    function get_hovering_square(e)
+    {
+        var el = document.elementFromPoint(e.clientX, e.clientY),
+            match,
+            square = {},
+            rank_m,
+            file_m;
+        
+        if (el && el.className && el.classList.contains("square")) {
+            rank_m = el.className.match(/rank(\d+)/);
+            file_m = el.className.match(/file(\d+)/);
+            
+            if (rank_m) {
+                square.rank = parseInt(rank_m[1], 10);
+            }
+            if (file_m) {
+                square.file = parseInt(file_m[1], 10);
+            }
+        }
+        if (!isNaN(square.rank) && !isNaN(square.file)) {
+            square.el = el;
+            return square;
+        }
+        
     }
     
     function onmouseup(e)
     {
-        if (board.dragging_piece) {
+        var square;
+        
+        if (board.dragging.piece) {
             ///TODO: Move it
-            console.log(document.elementFromPoint(e.clientX, e.clientY));
-            /// Snap back.
+            square = get_hovering_square(e);
+            
+            if (square) {
+                //console.log(square)
+                square.el.appendChild(board.dragging.piece.el);
+            } else {
+                /// Snap back.
+                
+            }
+            prefix_css(board.dragging.piece.el, "transform", "none");
+            board.dragging.piece.el.classList.remove("dragging");
             board.el.classList.remove("dragging");
-            board.dragging_piece.el.classList.remove("dragging");
-            prefix_css(board.dragging_piece.el, "transform", "none");
-            delete board.dragging_piece;
-            delete board.dragging_origin;
+            
+            delete board.dragging;
         }
     }
     
