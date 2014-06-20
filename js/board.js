@@ -69,8 +69,8 @@ var BOARD = function board_init(el, options)
         board_details.width = parseFloat(w);
         board_details.height = parseFloat(h);
         
-        el.style.width  = board_details.width + "px";
-        el.style.height = board_details.height + "px";
+        board.el.style.width  = board_details.width + "px";
+        board.el.style.height = board_details.height + "px";
     }
     
     function make_board_num(num)
@@ -95,17 +95,23 @@ var BOARD = function board_init(el, options)
         return el;
     }
     
-    function create_board(new_el, dim)
+    function create_board(el, dim)
     {
         var x,
             y,
             cur_rank;
         
-        if (new_el) {
-            el = check_el(new_el);
+        if (el) {
+            board.el = check_el(el);
         }
         
-        el.innerHTML = "";
+        board.el.innerHTML = "";
+        
+        /// Prevent I beam cursor.
+        board.el.addEventListener("mousedown", function onboard_mouse_down(e)
+        {
+            e.preventDefault();
+        });
         
         if (dim) {
             size_board(dim.w, dim.h);
@@ -121,7 +127,7 @@ var BOARD = function board_init(el, options)
                 squares[y][x] = make_square(x, y);
                 if (x === 0) {
                     cur_rank = make_rank(y);
-                    el.appendChild(cur_rank);
+                    board.el.appendChild(cur_rank);
                     squares[y][x].appendChild(make_board_num(y));
                 }
                 if (y === 0) {
@@ -131,7 +137,7 @@ var BOARD = function board_init(el, options)
             }
         }
         
-        el.classList.add("chess_board");
+        board.el.classList.add("chess_board");
         
         return board;
     }
@@ -188,7 +194,8 @@ var BOARD = function board_init(el, options)
             if (is_piece_moveable(piece)) {
                 board.dragging_piece = piece;
                 board.dragging_origin = {x: e.clientX, y: e.clientY};
-                piece.el.classList.add("dragging");
+                board.el.classList.add("dragging");
+                board.dragging_piece.el.classList.add("dragging");
             }
             if (e.preventDefault) {
                 /// Prevent the cursor from becoming an I beam.
@@ -218,7 +225,9 @@ var BOARD = function board_init(el, options)
     {
         if (board.dragging_piece) {
             ///TODO: Move it
+            console.log(document.elementFromPoint(e.clientX, e.clientY));
             /// Snap back.
+            board.el.classList.remove("dragging");
             board.dragging_piece.el.classList.remove("dragging");
             prefix_css(board.dragging_piece.el, "transform", "none");
             delete board.dragging_piece;
@@ -253,8 +262,6 @@ var BOARD = function board_init(el, options)
     };
     
     options = options || {};
-    
-    el = check_el(el);
     
     if (!options.pos) {
         pos = get_init_pos();

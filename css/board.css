@@ -73,8 +73,19 @@
             transition: transform 200ms;
 }
 
-.dragging {
+
+/* See through the pieces to get the square underneath. */
+.chess_board.dragging .piece {
+    pointer-events: none;
+}
+/* Since we can see through the piece, we need the squares to have the pointer cursor. */
+.chess_board.dragging .square {
+    cursor: pointer!important;
+}
+
+.piece.dragging {
     z-index: 2!important;
+    
     -webkit-transition: none!important;
             transition: none!important;
 }
