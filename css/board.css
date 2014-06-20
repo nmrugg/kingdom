@@ -68,6 +68,7 @@
     right: 0;
     background-size: contain;
     background-repeat: no-repeat;
+    background-position: center;
     cursor: pointer!important;
     -webkit-transition: -webkit-transform 200ms;
             transition: transform 200ms;
