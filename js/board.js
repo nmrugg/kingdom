@@ -267,7 +267,7 @@ var BOARD = function board_init(el, options)
                 square.el.appendChild(board.dragging.piece.el);
             } else {
                 /// Snap back.
-                
+                ///TODO: Be able to remove pieces in setup mode.
             }
             prefix_css(board.dragging.piece.el, "transform", "none");
             board.dragging.piece.el.classList.remove("dragging");
