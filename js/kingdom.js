@@ -72,6 +72,7 @@
             }
             ///NOTE: Stockfish.js does not support the "debug" or "register" commands.
             ///TODO: Add support for "perft", "bench", and "key" commands.
+            ///TODO: Get welcome message so that it does not get caught with other messages.
             
             if (done) {
                 if (que[0].cb) {
