@@ -8,7 +8,7 @@ The AI is <a href="https://github.com/nmrugg/stockfish.js">Stockfish.js</a>. A J
 
 <h2>Play</h2>
 
-<a href="http://nmrugg.github.io/kingdom/">Play it online.</a>
+<strong><a href="http://nmrugg.github.io/kingdom/">Play it online.</a></strong>
 
 <h2>License</h2>
 
