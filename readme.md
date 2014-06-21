@@ -6,6 +6,10 @@ Kingdom is a chess game I wrote for Aaron on his sixth birthday. Well, actually 
 
 The AI is <a href="https://github.com/nmrugg/stockfish.js">Stockfish.js</a>. A JavaScript port of the venerable  <a href="https://github.com/mcostalba/Stockfish">Stockfish</a> chess engine.
 
+<h2>Play</h2>
+
+<a href="http://nmrugg.github.io/kingdom/">Play it online.</a>
+
 <h2>License</h2>
 
 Stockfish.js is licensed under the <a href="http://opensource.org/licenses/gpl-license">GPL</a>.
