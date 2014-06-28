@@ -343,11 +343,11 @@ var BOARD = function board_init(el, options)
         }
         if (san === "O-O") { /// Kingside castle
             rook = get_piece_from_rank_file(rook_rank, 7);
-            set_piece_pos(rook.el, {rank: rook_rank, file: 5});
+            set_piece_pos(rook, {rank: rook_rank, file: 5});
             rook.file = 5;
         } else if (san === "O-O-O") { /// Queenside castle
             rook = get_piece_from_rank_file(rook_rank, 0);
-            set_piece_pos(rook.el, {rank: rook_rank, file: 3});
+            set_piece_pos(rook, {rank: rook_rank, file: 3});
             rook.file = 3;
         }
         
