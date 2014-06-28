@@ -346,6 +346,11 @@ var BOARD = function board_init(el, options)
         ///TODO: Promotion
     }
     
+    function is_promoting(piece, square)
+    {
+        return piece.type === "p" && square.rank % board_details.ranks - 1 === 0;
+    }
+    
     function onmouseup(e)
     {
         var square,
@@ -357,9 +362,9 @@ var BOARD = function board_init(el, options)
             
             uci = get_move(board.dragging.piece, square);
             
-            if (square && is_legal_move(uci)) {
-                move_piece(board.dragging.piece, square, uci)
-                report_move(uci, square.rank === 7);
+            if (square && (board.mode === "setup" || is_legal_move(uci))) {
+                move_piece(board.dragging.piece, square, uci);
+                report_move(uci, is_promoting(board.dragging.piece, square));
             } else {
                 /// Snap back.
                 ///TODO: Be able to remove pieces in setup mode.
