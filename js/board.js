@@ -160,7 +160,8 @@ var BOARD = function board_init(el, options)
     {
         var fen_pieces = pos.match(/^\S+/),
             rank = 7,
-            file = 0;
+            file = 0,
+            id = 0;
         
         ///TODO: Delete old pieces.
         pieces = [];
@@ -190,8 +191,10 @@ var BOARD = function board_init(el, options)
                 }
                 piece.rank = rank;
                 piece.file = file;
+                piece.id = id;
                 pieces[pieces.length] = piece;
                 file += 1;
+                id += 1;
             }
         });
     }
@@ -309,6 +312,15 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function set_piece_pos(piece, square)
+    {
+        piece.el.style.top = -(square.rank * 100) + "%";
+        piece.el.style.bottom = (square.rank * 100) + "%";
+        
+        piece.el.style.left = (square.file * 100) + "%";
+        piece.el.style.right = -(square.file * 100) + "%";
+    }
+    
     function move_piece(piece, square, uci)
     {
         var captured_piece,
@@ -316,12 +328,12 @@ var BOARD = function board_init(el, options)
             san,
             rook_rank = board.turn === "w" ? 0 : 7;
         
-        square.el.appendChild(piece.el);
+        set_piece_pos(piece, square);
         
         ///FIXME: This won't get en passant.
         captured_piece = get_piece_from_rank_file(square.rank, square.file);
         
-        if (captured_piece) {
+        if (captured_piece && captured_piece.id !== piece.id) {
             capture(captured_piece);
         }
         
@@ -331,11 +343,11 @@ var BOARD = function board_init(el, options)
         }
         if (san === "O-O") { /// Kingside castle
             rook = get_piece_from_rank_file(rook_rank, 7);
-            squares[rook_rank][5].appendChild(rook.el);
+            set_piece_pos(rook.el, {rank: rook_rank, file: 5});
             rook.file = 5;
         } else if (san === "O-O-O") { /// Queenside castle
             rook = get_piece_from_rank_file(rook_rank, 0);
-            squares[rook_rank][3].appendChild(rook.el);
+            set_piece_pos(rook.el, {rank: rook_rank, file: 3});
             rook.file = 3;
         }
         
@@ -369,6 +381,7 @@ var BOARD = function board_init(el, options)
                 /// Snap back.
                 ///TODO: Be able to remove pieces in setup mode.
             }
+            
             prefix_css(board.dragging.piece.el, "transform", "none");
             board.dragging.piece.el.classList.remove("dragging");
             board.el.classList.remove("dragging");
@@ -393,7 +406,9 @@ var BOARD = function board_init(el, options)
                 add_piece_events(piece);
             }
             
-            squares[piece.rank][piece.file].appendChild(piece.el);
+            /// We just put them all in the bottom left corner and more the position.
+            squares[0][0].appendChild(piece.el);
+            set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
     }
     
