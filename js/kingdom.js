@@ -61,7 +61,7 @@
             } else if (line.substr(0, 8) === "bestmove") {
                 /// go [...]
                 done = true;
-                /// All go needs in the last line (use stream to get more)
+                /// All "go" needs is the last line (use stream to get more)
                 cur_message = line;
             } else if (que[0].cmd === "d" && line.substr(0, 15) === "Legal uci moves") {
                 done = true;
@@ -73,6 +73,8 @@
             ///NOTE: Stockfish.js does not support the "debug" or "register" commands.
             ///TODO: Add support for "perft", "bench", and "key" commands.
             ///TODO: Get welcome message so that it does not get caught with other messages.
+            ///TODO: Prevent (or handle) multiple messages from different commands
+            ///      E.g., "go depth 20" followed later by "uci"
             
             if (done) {
                 if (que[0].cb) {
@@ -243,16 +245,16 @@
     
     function init()
     {
+        onresize();
+        
+        window.addEventListener("resize", onresize);
+        
         loading_el = document.createElement("div");
         
         loading_el.textContent = "Loading...";
         loading_el.classList.add("loading");
         
         document.documentElement.appendChild(loading_el);
-        
-        onresize();
-        
-        window.addEventListener("resize", onresize);
         
         board.wait();
         
