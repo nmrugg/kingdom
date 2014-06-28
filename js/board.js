@@ -272,6 +272,10 @@ var BOARD = function board_init(el, options)
     {
         ///TODO: Determine how to underpromote.
         ///      We should first make sure it's a legal move before even asking.
+        if (!board.legal_moves) {
+            return false;
+        }
+        
         return board.legal_moves.uci.indexOf(uci) > -1;
     }
     
@@ -291,7 +295,7 @@ var BOARD = function board_init(el, options)
             
             delete board.legal_moves;
             
-            if (board.onmove) {
+            if (board.mode === "play" && board.onmove) {
                 board.onmove(move);
             }
         }
@@ -322,7 +326,9 @@ var BOARD = function board_init(el, options)
         }
         
         /// Is it castling?
-        san = board.legal_moves.san[board.legal_moves.uci.indexOf(uci)];
+        if (board.legal_moves) {
+            san = board.legal_moves.san[board.legal_moves.uci.indexOf(uci)];
+        }
         if (san === "O-O") { /// Kingside castle
             rook = get_piece_from_rank_file(rook_rank, 7);
             squares[rook_rank][5].appendChild(rook.el);

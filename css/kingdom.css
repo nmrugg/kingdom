@@ -16,6 +16,7 @@ html, body {
     font-size: 40px;
     font-family: arial, sans, sans-serif;
     opacity: .8;
+    pointer-events: none;
 }
 
 .hidden {
