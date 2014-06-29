@@ -326,7 +326,7 @@ var BOARD = function board_init(el, options)
         var captured_piece,
             rook,
             san,
-            rook_rank = board.turn === "w" ? 0 : 7;
+            rook_rank = board.turn === "w" ? 0 : 7; ///TODO: Use board_details.ranks
         
         set_piece_pos(piece, square);
         
@@ -369,7 +369,6 @@ var BOARD = function board_init(el, options)
             uci;
         
         if (board.dragging && board.dragging.piece) {
-            ///TODO: Move it
             square = get_hovering_square(e);
             
             uci = get_move(board.dragging.piece, square);
@@ -506,7 +505,7 @@ var BOARD = function board_init(el, options)
             b: {
                 type: "ai",
             }
-        }
+        },
     /// moves: []
     /// legal_move[]
     /// onmove()
