@@ -289,7 +289,7 @@ var BOARD = function board_init(el, options)
         }
     }
     
-    function report_move(move, promoting)
+    function report_move(uci, promoting, cb)
     {
         /// We make it async because of promotion.
         function record()
@@ -299,7 +299,11 @@ var BOARD = function board_init(el, options)
             delete board.legal_moves;
             
             if (board.mode === "play" && board.onmove) {
-                board.onmove(move);
+                board.onmove(uci);
+            }
+            
+            if (cb) {
+                cb(uci)
             }
         }
         
@@ -330,6 +334,14 @@ var BOARD = function board_init(el, options)
         return board.legal_moves.san[board.legal_moves.uci.indexOf(uci)];
     }
     
+    function promote_piece(piece, uci)
+    {
+        if (uci.length === 5 && /[qrbn]/.test(uci[4])) {
+            piece.type = uci[4];
+            piece.el.style.backgroundImage = get_piece_img(piece);
+        }
+    }
+    
     function move_piece(piece, square, uci)
     {
         var captured_piece,
@@ -342,31 +354,32 @@ var BOARD = function board_init(el, options)
         ///NOTE: This does not find en passant captures. See below.
         captured_piece = get_piece_from_rank_file(square.rank, square.file);
         
-        /// En passant
-        if (!captured_piece && piece.type === "p" && piece.file !== square.file && ((piece.color === "w" && square.rank === board_details.ranks - 3) || (piece.color === "b" && square.rank === 2))) {
-            captured_piece = get_piece_from_rank_file(piece.rank, square.file);
-        }
-        
-        if (captured_piece && captured_piece.id !== piece.id) {
-            capture(captured_piece);
-        }
-        
-        /// Is it castling?
-        if (san === "O-O") { /// Kingside castle
-            rook = get_piece_from_rank_file(rook_rank, 7);
-            set_piece_pos(rook, {rank: rook_rank, file: 5});
-            rook.file = 5;
-        } else if (san === "O-O-O") { /// Queenside castle
-            rook = get_piece_from_rank_file(rook_rank, 0);
-            set_piece_pos(rook, {rank: rook_rank, file: 3});
-            rook.file = 3;
+        if (board.mode === "play") {
+            /// En passant
+            if (!captured_piece && piece.type === "p" && piece.file !== square.file && ((piece.color === "w" && square.rank === board_details.ranks - 3) || (piece.color === "b" && square.rank === 2))) {
+                captured_piece = get_piece_from_rank_file(piece.rank, square.file);
+            }
+            
+            if (captured_piece && captured_piece.id !== piece.id) {
+                capture(captured_piece);
+            }
+            
+            /// Is it castling?
+            ///TODO: Use board_details.files
+            if (san === "O-O") { /// Kingside castle
+                rook = get_piece_from_rank_file(rook_rank, 7);
+                set_piece_pos(rook, {rank: rook_rank, file: 5});
+                rook.file = 5;
+            } else if (san === "O-O-O") { /// Queenside castle
+                rook = get_piece_from_rank_file(rook_rank, 0);
+                set_piece_pos(rook, {rank: rook_rank, file: 3});
+                rook.file = 3;
+            }
         }
         
         /// Make sure to change the rank and file after checking for a capured piece so that you don't capture yourself.
         piece.rank = square.rank;
         piece.file = square.file;
-        
-        ///TODO: Promotion
     }
     
     function is_promoting(piece, square)
@@ -375,28 +388,34 @@ var BOARD = function board_init(el, options)
             return;
         }
         
-        return piece.type === "p" && square.rank % board_details.ranks - 1 === 0;
+        return piece.type === "p" && square.rank % (board_details.ranks - 1) === 0;
     }
     
     function onmouseup(e)
     {
         var square,
             uci,
-            promoting;
+            promoting,
+            piece_storage;
         
         if (board.dragging && board.dragging.piece) {
             square = get_hovering_square(e);
             promoting = is_promoting(board.dragging.piece, square);
             
-            if (is_promoting) {
-                move += "q"; /// We just add something to make sure it's a legal move. We'll ask the user later what he actually wants to promote to.
-            }
-            
             uci = get_move(board.dragging.piece, square);
             
+            if (promoting) {
+                uci += "q"; /// We just add something to make sure it's a legal move. We'll ask the user later what he actually wants to promote to.
+            }
+            
             if (square && (board.mode === "setup" || is_legal_move(uci))) {
+                piece_storage = board.dragging.piece;
                 move_piece(board.dragging.piece, square, uci);
-                report_move(uci, promoting);
+                report_move(uci, promoting, function onreport(finalized_uci)
+                {
+                    ///NOTE: Since this is async, we need to store which piece was moved.
+                    promote_piece(piece_storage, finalized_uci);
+                });
             } else {
                 /// Snap back.
                 ///TODO: Be able to remove pieces in setup mode.
@@ -410,6 +429,11 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function get_piece_img(piece)
+    {
+        return "url(\"" + encodeURI("img/pieces/" + board.theme + "/" + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
+    }
+    
     function set_board()
     {
         load_pieces_from_start();
@@ -421,7 +445,7 @@ var BOARD = function board_init(el, options)
                 
                 piece.el.classList.add("piece");
                 
-                piece.el.style.backgroundImage = "url(\"" + encodeURI("img/pieces/" + board.theme + "/" + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
+                piece.el.style.backgroundImage = get_piece_img(piece)
                 
                 add_piece_events(piece);
             }
@@ -503,6 +527,7 @@ var BOARD = function board_init(el, options)
         piece = get_piece_from_rank_file(positions.starting.rank, positions.starting.file);
         
         move_piece(piece, ending_square, uci);
+        promote_piece(piece, uci);
     }
     
     function move(uci)
