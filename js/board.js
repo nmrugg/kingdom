@@ -204,11 +204,16 @@ var BOARD = function board_init(el, options)
         return board.mode === "setup" || (board.mode === "play" && board.legal_moves && board.turn === piece.color && board.players[board.turn].type === "human");
     }
     
+    function is_left_click(e)
+    {
+        return (e.which || (e || window.event).button) === 1;
+    }
+    
     function add_piece_events(piece)
     {
         piece.el.addEventListener("mousedown", function onpiece_mouse_down(e)
         {
-            if (is_piece_moveable(piece)) {
+            if (is_left_click(e) && is_piece_moveable(piece)) {
                 board.dragging = {};
                 board.dragging.piece = piece;
                 board.dragging.origin = {x: e.clientX, y: e.clientY};
