@@ -173,7 +173,7 @@
                 if (board.mode === "play") {
                     /// Was it checkmate?
                     if (moves.checkers.length) {
-                        alert((board.turn === "b" ? "Black" : "White") + " was Checkmated!");
+                        alert((board.turn === "b" ? "Black" : "White") + " is checkmated!");
                     } else {
                         alert("Stalemate!");
                     }
