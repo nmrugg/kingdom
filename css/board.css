@@ -141,7 +141,7 @@
     width: 25%;
     background-position: center;
     cursor: pointer;
-    opacity: .6;
+    opacity: .7;
     -webkit-transition: opacity 200ms;
             transition: opacity 200ms;
 }
