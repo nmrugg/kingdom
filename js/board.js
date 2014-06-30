@@ -213,6 +213,7 @@ var BOARD = function board_init(el, options)
     {
         piece.el.addEventListener("mousedown", function onpiece_mouse_down(e)
         {
+            ///TODO: Test and make sure it works on touch devices.
             if (is_left_click(e) && is_piece_moveable(piece)) {
                 board.dragging = {};
                 board.dragging.piece = piece;
@@ -294,6 +295,57 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function create_promotion_icon(which, cb)
+    {
+        var icon = document.createElement("div");
+        
+        icon.addEventListener("click", function onclick()
+        {
+            cb(which);
+        });
+        
+        icon.style.backgroundImage = get_piece_img({color: board.turn, type: which});
+        
+        icon.classList.add("promotion_icon");
+        
+        return icon;
+    }
+    
+    function promotion_prompt(cb)
+    {
+        var mod_win = document.createElement("div"),
+            text_el = document.createElement("div");
+        
+        mod_win.classList.add("board_modular_window");
+        
+        function close_window()
+        {
+            document.body.removeChild(mod_win);
+            delete board.modular_window_close;
+        }
+        
+        function onselect(which)
+        {
+            board.mode = "play";
+            close_window();
+            cb(which);
+        }
+        
+        text_el.textContent = "Promote to";
+        text_el.classList.add("promotion_text");
+        
+        mod_win.appendChild(text_el);
+        
+        mod_win.appendChild(create_promotion_icon("q", onselect));
+        mod_win.appendChild(create_promotion_icon("r", onselect));
+        mod_win.appendChild(create_promotion_icon("b", onselect));
+        mod_win.appendChild(create_promotion_icon("n", onselect));
+        
+        document.body.appendChild(mod_win);
+        board.mode = "waiting_for_modular_window";
+        board.modular_window_close = close_window;
+    }
+    
     function report_move(uci, promoting, cb)
     {
         /// We make it async because of promotion.
@@ -313,9 +365,12 @@ var BOARD = function board_init(el, options)
         }
         
         if (promoting) {
-            ///TODO: Ask...
-            //move += "q"; /// For now, defaulting to queen.
-            setTimeout(record, 10);
+            promotion_prompt(function onres(answer)
+            {
+                ///NOTE: The uci move already includes a promotion to queen to make it a valid move. We need to remove this and replace it with the desired promotion.
+                uci = uci.substr(0, 4) + answer;
+                record();
+            });
         } else {
             setTimeout(record, 10);
         }
