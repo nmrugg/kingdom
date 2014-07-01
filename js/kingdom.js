@@ -196,9 +196,8 @@
         
         board.move(res[1]);
         set_ai_position();
-        ///TODO: FIx race conditions.
-        ///NOTE: We don't need to check for legal moves if there are two ai's.
-        set_legal_moves();
+        
+        set_legal_moves(tell_engine_to_move);
     }
     
     function onthinking(str)
@@ -213,24 +212,20 @@
     
     function tell_engine_to_move()
     {
-        //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
-        /// Without time, it thinks really fast.
-        engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 100000 btime 100000" , onengine_move, onthinking);
+        if (board.players[board.turn].type === "ai") {
+            //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
+            /// Without time, it thinks really fast.
+            engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 100000 btime 100000" , onengine_move, onthinking);
+            return true;
+        }
     }
     
     function onmove(move)
     {
-        board.moves.push(move);
-        
         set_ai_position();
         
         ///NOTE: We need to get legal moves (even for AI) because we need to know if a move is castling or not.
-        set_legal_moves(function ()
-        {
-            if (board.players[board.turn].type === "ai") {
-                tell_engine_to_move();
-            }
-        });
+        set_legal_moves(tell_engine_to_move);
     }
     
     function start_new_game()
@@ -243,6 +238,7 @@
         {
             loading_el.classList.add("hidden");
             board.play();
+            tell_engine_to_move();
         });
     }
     

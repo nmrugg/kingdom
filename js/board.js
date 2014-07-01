@@ -351,11 +351,10 @@ var BOARD = function board_init(el, options)
         /// We make it async because of promotion.
         function record()
         {
-            switch_turn();
-            
             delete board.legal_moves;
             
             if (board.mode === "play" && board.onmove) {
+                track_move(uci);
                 board.onmove(uci);
             }
             
@@ -590,11 +589,16 @@ var BOARD = function board_init(el, options)
         promote_piece(piece, uci);
     }
     
-    function move(uci)
+    function track_move(uci)
     {
         board.moves.push(uci);
-        move_piece_uci(uci);
         switch_turn();
+    }
+    
+    function move(uci)
+    {
+        move_piece_uci(uci);
+        track_move(uci);
     }
     
     board = {
@@ -612,6 +616,7 @@ var BOARD = function board_init(el, options)
                 type: "ai",
             }
         },
+        switch_turn: switch_turn
     /// moves: []
     /// legal_move[]
     /// onmove()
