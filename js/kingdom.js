@@ -235,7 +235,13 @@
     
     function set_ai_position()
     {
-        engine.send("position startpos moves " + board.moves.join(" "));
+        var cmd = "position startpos";
+        
+        if (board.moves && board.moves.length) {
+            cmd += " moves " + board.moves.join(" ");
+        }
+        
+        engine.send(cmd);
     }
     
     function tell_engine_to_move()
@@ -258,9 +264,17 @@
     
     function start_new_game()
     {
-        board.moves = [];
+        positions = [];
+        stalemate_by_rules = null;
+        cur_pos = null;
         
         engine.send("ucinewgame");
+        
+        if (board.messy) {
+            board.set_board();
+        }
+        
+        set_ai_position();
         
         set_legal_moves(function onset()
         {

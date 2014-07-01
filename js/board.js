@@ -164,6 +164,15 @@ var BOARD = function board_init(el, options)
             id = 0;
         
         ///TODO: Delete old pieces.
+        if (pieces) {
+            pieces.forEach(function oneach(piece)
+            {
+                if (piece.el && piece.el.parentNode) {
+                    piece.el.parentNode.removeChild(piece.el);
+                }
+                
+            });
+        }
         pieces = [];
         
         if (!fen_pieces) {
@@ -408,6 +417,9 @@ var BOARD = function board_init(el, options)
             san = get_san(uci),
             rook_rank = board.turn === "w" ? 0 : 7; ///TODO: Use board_details.ranks
         
+        /// Indicate that the board has been changed; it is not in the inital starting position.
+        board.messy = true;
+        
         set_piece_pos(piece, square);
         
         ///NOTE: This does not find en passant captures. See below.
@@ -513,6 +525,10 @@ var BOARD = function board_init(el, options)
             squares[0][0].appendChild(piece.el);
             set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
+        
+        board.turn = "w";
+        board.moves = [];
+        board.messy = false;
     }
     
     function wait()
@@ -524,7 +540,6 @@ var BOARD = function board_init(el, options)
     
     function play()
     {
-        board.turn = "w";
         board.mode = "play";
         board.el.classList.remove("waiting");
         board.el.classList.add("playing");
@@ -616,8 +631,9 @@ var BOARD = function board_init(el, options)
                 type: "ai",
             }
         },
-        switch_turn: switch_turn
-    /// moves: []
+        switch_turn: switch_turn,
+        set_board: set_board,
+        moves: []
     /// legal_move[]
     /// onmove()
     };
