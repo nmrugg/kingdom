@@ -10,8 +10,8 @@
         evaler,
         ai_thinking = 0,
         discard_move = 0,
-        loading_el;
-    
+        loading_el,
+        starting_new_game;
     
     function array_remove(arr, i, order_irrelevant)
     {
@@ -399,6 +399,12 @@
     
     function start_new_game()
     {
+        if (!engine.ready || starting_new_game) {
+            return;
+        }
+        
+        starting_new_game = true;
+        
         zobrist_keys = [];
         stalemate_by_rules = null;
         
@@ -416,6 +422,7 @@
             loading_el.classList.add("hidden");
             board.play();
             tell_engine_to_move();
+            starting_new_game = false;
         });
     }
     
@@ -448,6 +455,13 @@
             });
         });
     }
+    
+    window.addEventListener("keydown", function catch_key(e)
+    {
+        if (e.keyCode === 113) { /// F2
+            start_new_game();
+        }
+    });
     
     init();
 }());
