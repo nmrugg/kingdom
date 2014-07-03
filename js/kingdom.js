@@ -6,6 +6,8 @@
         game = {},
         engine,
         evaler,
+        ai_thinking = 0,
+        discard_move = 0,
         loading_el;
     
     function error(str)
@@ -20,14 +22,51 @@
     {
         var worker = new Worker("js/stockfish.js"),
             engine = {},
-            que = [],
-            cur_message = "";
+            que = [];
+        
+        function get_first_word(line)
+        {
+            return line.substr(0, line.indexOf(" "));
+        }
+        
+        function determine_que_num(line, que)
+        {
+            var cmd_type,
+                first_word = get_first_word(line),
+                cmd_first_word,
+                i,
+                len;
+            
+            if (first_word === "uciok" || first_word === "option") {
+                cmd_type = "uci"
+            } else if (first_word === "readyok") {
+                cmd_type = "isready";
+            } else if (first_word === "bestmove" || first_word === "info") {
+                cmd_type = "go";
+            } else {
+                /// eval and d are more difficult.
+                cmd_type = "other";
+            }
+            
+            len = que.length;
+            
+            for (i = 0; i < len; i += 1) {
+                cmd_first_word = get_first_word(que[i].cmd);
+                if (cmd_first_word === cmd_type || (cmd_type === "other" && (cmd_first_word === "d" || cmd_first_word === "eval"))) {
+                    return i;
+                }
+            }
+            
+            /// Not sure; just go with the first one.
+            return 0;
+        }
         
         worker.onmessage = function (e)
         {
             var line = e.data,
-                done;
-            //var obj = que.shift();
+                done,
+                que_num = 0,
+                my_que;
             
             /// Stream everything to this, even invalid lines.
             if (engine.stream) {
@@ -39,15 +78,21 @@
                 return;
             }
             
-            if (que[0].stream) {
-                que[0].stream(line);
+            que_num = determine_que_num(line, que);
+            
+            my_que = que[que_num];
+            
+            if (my_que.stream) {
+                my_que.stream(line);
             }
             
-            if (cur_message !== "") {
-                cur_message += "\n";
+            if (typeof my_que.message === "undefined") {
+                my_que.message = "";
+            } else if (my_que.message !== "") {
+                my_que.message += "\n";
             }
             
-            cur_message += line;
+            my_que.message += line;
             
             /// Try to determine if the stream is done.
             if (line === "uciok") {
@@ -62,10 +107,10 @@
                 /// go [...]
                 done = true;
                 /// All "go" needs is the last line (use stream to get more)
-                cur_message = line;
-            } else if (que[0].cmd === "d" && line.substr(0, 15) === "Legal uci moves") {
+                my_que.message = line;
+            } else if (my_que.cmd === "d" && line.substr(0, 15) === "Legal uci moves") {
                 done = true;
-            } else if (que[0].cmd === "eval" && /Total Evaluation[\s\S]+\n$/.test(cur_message)) {
+            } else if (my_que.cmd === "eval" && /Total Evaluation[\s\S]+\n$/.test(my_que.message)) {
                 done = true;
             } else if (line.substr(0, 15) === "Unknown command") {
                 done = true;
@@ -77,12 +122,12 @@
             ///      E.g., "go depth 20" followed later by "uci"
             
             if (done) {
-                if (que[0].cb) {
-                    que[0].cb(cur_message);
+                if (my_que.cb) {
+                    my_que.cb(my_que.message);
                 }
-                cur_message = "";
+                
                 /// Remove this from the que.
-                que.shift();
+                array_remove(que, que_num);
             }
         };
         
@@ -213,7 +258,18 @@
     
     function onengine_move(str)
     {
-        var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/)
+        var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+        
+        ai_thinking -= 1;
+        
+        if (discard_move) {
+            discard_move -= 1;
+            if (discard_move < 0) {
+                console.log("Too many discard_move's: " + discard_move);
+                discard_move = 0;
+            }
+            return;
+        }
         
         if (!res) {
             error("Can't get move: " + str);
@@ -247,6 +303,7 @@
     function tell_engine_to_move()
     {
         if (board.players[board.turn].type === "ai") {
+            ai_thinking += 1;
             //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
             /// Without time, it thinks really fast.
             engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 100000 btime 100000" , onengine_move, onthinking);
@@ -262,6 +319,14 @@
         set_legal_moves(tell_engine_to_move);
     }
     
+    function stop_ai()
+    {
+        if (ai_thinking) {
+            discard_move += 1;
+            engine.send("stop");
+        }
+    }
+    
     function start_new_game()
     {
         positions = [];
@@ -274,6 +339,7 @@
             board.set_board();
         }
         
+        stop_ai();
         set_ai_position();
         
         set_legal_moves(function onset()
