@@ -4,11 +4,51 @@
     
     var board = BOARD("board"),
         game = {},
+        zobrist_keys,
+        stalemate_by_rules,
         engine,
         evaler,
         ai_thinking = 0,
         discard_move = 0,
         loading_el;
+    
+    
+    function array_remove(arr, i, order_irrelevant)
+    {
+        var len = arr.length;
+        
+        /// Handle negative numbers.
+        if (i < 0) {
+            i = len + i;
+        }
+        
+        /// If the last element is to be removed, then all we need to do is pop it off.
+        ///NOTE: This is always the fastest method and it is orderly too.
+        if (i === len - 1) {
+            arr.pop();
+        /// If the second to last element is to be removed, we can just pop off the last one and replace the second to last one with it.
+        ///NOTE: This is always the fastest method and it is orderly too.
+        } else if (i === len - 2) {
+            arr[len - 2] = arr.pop();
+        /// Can use we the faster (but unorderly) remove method?
+        } else if (order_irrelevant || i === len - 2) {
+            if (i >= 0 && i < len) {
+                /// This works by popping off the last array element and using that to replace the element to be removed.
+                arr[i] = arr.pop();
+            }
+        } else {
+            /// The first element can be quickly shifted off.
+            if (i === 0) {
+                arr.shift();
+            /// Ignore numbers that are still negative.
+            ///NOTE: By default, if a number is below the total array count (e.g., array_remove([0,1], -3)), splice() will remove the first element.
+            ///      This behavior is undesirable because it is unexpected.
+            } else if (i > 0) {
+                /// Use the orderly, but slower, splice method.
+                arr.splice(i, 1);
+            }
+        }
+    }
     
     function error(str)
     {
@@ -140,6 +180,8 @@
                 return;
             }
             
+            console.log(cmd);
+            
             /// Only add a que for commands that always print.
             ///NOTE: setoption may or may not print a statement.
             if (cmd !== "ucinewgame" && cmd !== "flip" && cmd !== "stop" && cmd !== "ponderhit" && cmd.substr(0, 8) !== "position"  && cmd.substr(0, 9) !== "setoption") {
@@ -175,17 +217,19 @@
         {
             var san = str.match(/Legal moves\:(.*)/),
                 uci = str.match(/Legal uci moves\:(.*)/),
-                checkers = str.match(/Checkers\:(.*)/),
+                key = str.match(/Key\: (\S+)/),
                 fen = str.match(/Fen\: (\S+) (\S+) (\S+) (\S+) (\S+) (\S+)/),
+                checkers = str.match(/Checkers\:(.*)/),
                 res;
             
-            if (!san || !uci || !checkers) {
+            if (!san || !uci || !checkers || !key) {
                 error("Invalid d response: \n" + str);
             }
             
             res = {
                 san: san[1].trim().split(" "),
                 uci: uci[1].trim().split(" "),
+                key: key[1],
                 checkers: checkers[1].trim().split(" "),
             };
             
@@ -215,10 +259,32 @@
         });
     }
     
-    function is_stalemate_by_rule(fen)
+    function is_stalemate_by_rule(fen, key)
     {
+        var i,
+            count = 1;
+        
         if (fen.half_move_clock > 99) {
             return "50";
+        }
+        
+        if (!key) {
+            key = zobrist_keys[zobrist_keys.length - 1];
+            ///NOTE: The last move and this one cannot be the same since a different player has moved.
+            i = zobrist_keys.length - 2;
+        } else {
+            i = zobrist_keys.length - 1;
+        }
+        
+        for (; i >= 0; i -= 1) {
+            console.log(key, zobrist_keys[i], i)
+            if (key === zobrist_keys[i]) {
+                count += 1;
+                console.log(count);
+                if (count === 3) {
+                    return "3";
+                }
+            }
         }
     }
     
@@ -226,7 +292,9 @@
     {
         get_legal_moves(function onget(moves)
         {
-            var stalemate_by_rules = is_stalemate_by_rule(moves.fen);
+            zobrist_keys.push(moves.key);
+            
+            stalemate_by_rules = is_stalemate_by_rule(moves.fen);
             /// Is the game still on?
             
             ///TODO: Only AI should automatically claim 50 move rule. (And probably not the lower levels).
@@ -245,6 +313,8 @@
                         if (stalemate_by_rules) {
                             if (stalemate_by_rules === "50") {
                                 alert("Stalemate: 50 move rule");
+                            } else if (stalemate_by_rules === "3") {
+                                alert("Stalemate: Three-fold repetition");
                             }
                         } else {
                             alert("Stalemate!");
@@ -329,9 +399,8 @@
     
     function start_new_game()
     {
-        positions = [];
+        zobrist_keys = [];
         stalemate_by_rules = null;
-        cur_pos = null;
         
         engine.send("ucinewgame");
         
