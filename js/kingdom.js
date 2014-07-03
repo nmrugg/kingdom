@@ -276,11 +276,10 @@
             i = zobrist_keys.length - 1;
         }
         
+        ///TODO: Delete keys after a capture, pawn movement, or castling abilities change.
         for (; i >= 0; i -= 1) {
-            console.log(key, zobrist_keys[i], i)
             if (key === zobrist_keys[i]) {
                 count += 1;
-                console.log(count);
                 if (count === 3) {
                     return "3";
                 }
