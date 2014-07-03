@@ -288,9 +288,7 @@ var BOARD = function board_init(el, options)
     
     function is_legal_move(uci)
     {
-        ///TODO: Determine how to underpromote.
-        ///      We should first make sure it's a legal move before even asking.
-        if (!board.legal_moves) {
+        if (!board.legal_moves || !board.legal_moves.uci) {
             return false;
         }
         
