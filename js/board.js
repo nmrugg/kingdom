@@ -4,8 +4,7 @@ var BOARD = function board_init(el, options)
 {
     "use strict";
     
-    var pieces,
-        board,
+    var board,
         board_details = {
             ranks: 8,
             files: 8,
@@ -164,8 +163,8 @@ var BOARD = function board_init(el, options)
             id = 0;
         
         ///TODO: Delete old pieces.
-        if (pieces) {
-            pieces.forEach(function oneach(piece)
+        if (board.pieces) {
+            board.pieces.forEach(function oneach(piece)
             {
                 if (piece.el && piece.el.parentNode) {
                     piece.el.parentNode.removeChild(piece.el);
@@ -173,7 +172,7 @@ var BOARD = function board_init(el, options)
                 
             });
         }
-        pieces = [];
+        board.pieces = [];
         
         if (!fen_pieces) {
             error("Bad position: " + pos);
@@ -201,7 +200,7 @@ var BOARD = function board_init(el, options)
                 piece.rank = rank;
                 piece.file = file;
                 piece.id = id;
-                pieces[pieces.length] = piece;
+                board.pieces[board.pieces.length] = piece;
                 file += 1;
                 id += 1;
             }
@@ -507,7 +506,7 @@ var BOARD = function board_init(el, options)
     {
         load_pieces_from_start();
         
-        pieces.forEach(function oneach(piece)
+        board.pieces.forEach(function oneach(piece)
         {
             if (!piece.el) {
                 piece.el = document.createElement("div");
@@ -550,9 +549,9 @@ var BOARD = function board_init(el, options)
         rank = parseInt(rank, 10);
         file = parseInt(file, 10);
         
-        for (i = pieces.length - 1; i >= 0; i -= 1) {
-            if (!pieces[i].captured && pieces[i].rank === rank && pieces[i].file === file) {
-                return pieces[i];
+        for (i = board.pieces.length - 1; i >= 0; i -= 1) {
+            if (!board.pieces[i].captured && board.pieces[i].rank === rank && board.pieces[i].file === file) {
+                return board.pieces[i];
             }
         }
     }
@@ -615,6 +614,7 @@ var BOARD = function board_init(el, options)
     }
     
     board = {
+        pieces: [],
         size_board: size_board,
         theme: "default",
         mode: "setup",

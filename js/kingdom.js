@@ -262,12 +262,20 @@
     function is_stalemate_by_rule(fen, key)
     {
         var i,
-            count = 1;
+            count = 1,
+            piece_counts = {
+                knights: 0,
+                bishops: 0,
+                light_bishops: 0
+            },
+            piece_type;
         
+        /// Check 50 move rull
         if (fen.half_move_clock > 99) {
             return "50";
         }
         
+        /// Check three-fold repition
         if (!key) {
             key = zobrist_keys[zobrist_keys.length - 1];
             ///NOTE: The last move and this one cannot be the same since a different player has moved.
@@ -275,7 +283,6 @@
         } else {
             i = zobrist_keys.length - 1;
         }
-        
         ///TODO: Delete keys after a capture, pawn movement, or castling abilities change.
         for (; i >= 0; i -= 1) {
             if (key === zobrist_keys[i]) {
@@ -283,6 +290,34 @@
                 if (count === 3) {
                     return "3";
                 }
+            }
+        }
+        
+        /// Check insufficient material
+        /// 1. Only Kings
+        /// 2. Kings and one knight
+        /// 3. Kings and any number of bishops on either or one side all of which are on the same color
+        ///NOTE: Could examine the fen position too, but it would take a little more work to determine bishop color.
+        if (board.pieces) {
+            for (i = board.pieces.length - 1; i >= 0; i -= 1) {
+                if (!board.pieces[i].captured) {
+                    piece_type = board.pieces[i].type;
+                    if (piece_type === "p" || piece_type === "r" || piece_type === "q") {
+                        piece_counts.others = 1;
+                        break;
+                        /// We found a mating piece. Stop now.
+                    } else if (piece_type === "n") {
+                        piece_counts.knights += 1;
+                    } else if (piece_type === "b") {
+                        piece_counts.bishops += 1;
+                        if ((board.pieces[i].rank + board.pieces[i].file) % 2) {
+                            piece_counts.light_bishops += 1;
+                        }
+                    }
+                }
+            }
+            if (!piece_counts.others && ((!piece_counts.knights && !piece_counts.bishops) || ((piece_counts.knights === 1 && !piece_counts.bishops) ||(!piece_counts.knights && (piece_counts.light_bishops === 0 || (piece_counts.bishops === piece_counts.light_bishops)))))) {
+                return "material";
             }
         }
     }
@@ -314,6 +349,8 @@
                                 alert("Stalemate: 50 move rule");
                             } else if (stalemate_by_rules === "3") {
                                 alert("Stalemate: Three-fold repetition");
+                            } else if (stalemate_by_rules === "material") {
+                                alert("Stalemate: Insufficient material");
                             }
                         } else {
                             alert("Stalemate!");
