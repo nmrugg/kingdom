@@ -450,13 +450,14 @@
         zobrist_keys = [];
         stalemate_by_rules = null;
         
-        engine.send("ucinewgame");
-        
         if (board.messy) {
             board.set_board();
         }
         
         stop_ai();
+        
+        engine.send("ucinewgame");
+        
         set_ai_position();
         
         set_legal_moves(function onset()
