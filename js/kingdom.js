@@ -66,7 +66,13 @@
         
         function get_first_word(line)
         {
-            return line.substr(0, line.indexOf(" "));
+            var space_index = line.indexOf(" ");
+            
+            /// If there are no spaces, send the whole line.
+            if (space_index === -1) {
+                return line;
+            }
+            return line.substr(0, space_index);
         }
         
         function determine_que_num(line, que)
