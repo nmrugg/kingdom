@@ -214,7 +214,7 @@
             h = w;
         }
         
-        board.size_board(w * .9, h * .9);
+        board.size_board(Math.round(w * .9), Math.round(h * .9));
     }
     
     function get_legal_moves(cb)
