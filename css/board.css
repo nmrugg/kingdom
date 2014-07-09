@@ -69,6 +69,7 @@
     background-repeat: no-repeat;
     background-position: center;
     cursor: pointer!important;
+    image-rendering: -moz-crisp-edges;
     -webkit-transition: all 200ms;
             transition: all 200ms;
 }
