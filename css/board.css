@@ -16,14 +16,10 @@
 }
 
 .chess_board .rank {
-    width: 100%;
-    height: 12.5%;
     display: table-row;
 }
 
 .chess_board .square {
-    width: 12.5%;
-    height: 12.5%;
     display: table-cell;
     position: relative;
     cursor: default;
