@@ -384,6 +384,10 @@ var BOARD = function board_init(el, options)
     
     function set_piece_pos(piece, square)
     {
+        if (!piece || !piece.el || !piece.el.style || !square) {
+            return;
+        }
+        
         piece.el.style.top = -(square.rank * 100) + "%";
         piece.el.style.bottom = (square.rank * 100) + "%";
         
@@ -393,7 +397,7 @@ var BOARD = function board_init(el, options)
     
     function get_san(uci)
     {
-        if (!board.legal_moves) {
+        if (!board.legal_moves || !board.legal_moves.uci || !board.legal_moves.san) {
             return;
         }
         
@@ -414,6 +418,10 @@ var BOARD = function board_init(el, options)
             rook,
             san = get_san(uci),
             rook_rank = board.turn === "w" ? 0 : 7; ///TODO: Use board_details.ranks
+        
+        if (!piece || !square || !uci) {
+            return false;
+        }
         
         /// Indicate that the board has been changed; it is not in the inital starting position.
         board.messy = true;
