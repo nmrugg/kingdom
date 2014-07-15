@@ -512,6 +512,27 @@
         }
     }
     
+    function all_ready(cb)
+    {
+        function ready_black()
+        {
+            if (board.players.b.type === "ai") {
+                board.players.b.engine.send("isready", cb);
+            } else {
+                cb();
+            }
+        }
+        
+        evaler.send("isready", function evaler_ready()
+        {
+            if (board.players.w.type === "ai") {
+                board.players.w.engine.send("isready", ready_black);
+            } else {
+                ready_black();
+            }
+        });
+    }
+    
     function start_new_game()
     {
         if (!evaler.ready || starting_new_game) {
@@ -523,10 +544,11 @@
         zobrist_keys = [];
         stalemate_by_rules = null;
         
+        show_loading();
+        
         if (board.messy) {
             board.set_board();
         }
-        
         
         evaler.send("ucinewgame");
         
@@ -536,19 +558,22 @@
             board.players.w.engine.send("ucinewgame");
         }
         if (board.players.b.type === "ai") {
-            board.players.b.engine.send("ucinewgame");
             stop_ai(board.players.b.engine);
+            board.players.b.engine.send("ucinewgame");
         }
         
-        set_ai_position();
-        //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
-        //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
-        set_legal_moves(function onset()
+        all_ready(function start_game()
         {
-            loading_el.classList.add("hidden");
-            board.play();
-            tell_engine_to_move();
-            starting_new_game = false;
+            set_ai_position();
+            //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
+            //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
+            set_legal_moves(function onset()
+            {
+                loading_el.classList.add("hidden");
+                board.play();
+                tell_engine_to_move();
+                starting_new_game = false;
+            });
         });
     }
     //setInterval(start_new_game, 30000);
@@ -876,22 +901,28 @@
         board.players.b.set_time_type("none");
     }
     
+    function show_loading()
+    {
+        if (!loading_el) {
+            loading_el = G.cde("div", {t: "Loading...", c: "loading"});
+            
+            document.documentElement.appendChild(loading_el);
+        } else {
+            loading_el.classList.remove("hidden");
+        }
+        
+        board.wait();
+    }
+    
     function init()
     {
         onresize();
         
         window.addEventListener("resize", onresize);
         
-        loading_el = document.createElement("div");
-        
-        loading_el.textContent = "Loading...";
-        loading_el.classList.add("loading");
-        
-        document.documentElement.appendChild(loading_el);
+        show_loading();
         
         create_players();
-        
-        board.wait();
         
         board.onmove = onmove;
         
