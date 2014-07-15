@@ -22,3 +22,17 @@ html, body {
 .hidden {
     display: none;
 }
+
+.player {
+    position: absolute;
+    width: 20%;
+    top: 0;
+}
+
+.left_player {
+    left: 0;
+}
+
+.right_player {
+    right: 0;
+}

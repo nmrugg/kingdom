@@ -32,6 +32,7 @@ var BOARD = function board_init(el, options)
     {
         ///NOTE: I made this a function so that we could pass other arguments, like chess varients.
         return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        //return "6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39";
     }
     
     function make_square(x, y)
@@ -622,12 +623,8 @@ var BOARD = function board_init(el, options)
         play: play,
         move: move,
         players: {
-            w: {
-                type: "human",
-            },
-            b: {
-                type: "ai",
-            }
+            w: {},
+            b: {}
         },
         switch_turn: switch_turn,
         set_board: set_board,

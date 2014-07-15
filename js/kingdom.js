@@ -6,11 +6,10 @@
         game = {},
         zobrist_keys,
         stalemate_by_rules,
-        engine,
         evaler,
-        ai_thinking = 0,
-        discard_move = 0,
         loading_el,
+        player1_el = document.createElement("div"),
+        player2_el = document.createElement("div"),
         starting_new_game;
     
     function array_remove(arr, i, order_irrelevant)
@@ -61,7 +60,10 @@
     function load_engine()
     {
         var worker = new Worker("js/stockfish.js"),
-            engine = {},
+            engine = {
+                ai_thinking: 0,
+                discard_move: 0
+            },
             que = [];
         
         function get_first_word(line)
@@ -127,6 +129,10 @@
             que_num = determine_que_num(line, que);
             
             my_que = que[que_num];
+            
+            if (!my_que) {
+                return;
+            }
             
             if (my_que.stream) {
                 my_que.stream(line);
@@ -203,10 +209,10 @@
         return engine;
     }
     
-    function onresize()
+    function calculate_board_size(w, h)
     {
-        var w = window.innerWidth,
-            h = window.innerHeight;
+        w = w || window.innerWidth; 
+        h = h || window.innerHeight;
         
         if (w > h) {
             w = h
@@ -214,12 +220,41 @@
             h = w;
         }
         
-        board.size_board(Math.round(w * .9), Math.round(h * .9));
+        return Math.round(w * .9);
+    }
+    
+    function resize_board()
+    {
+        var size = calculate_board_size();
+        
+        board.size_board(size, size);
+    }
+    
+    function resize_players()
+    {
+        var board_size = calculate_board_size(),
+            width = Math.round(window.innerWidth * .9),
+            el_width;
+        
+        if (width > board_size) {
+            width = board_size;
+        }
+        
+        el_width = Math.floor((window.innerWidth - width) / 2);
+        
+        player1_el.style.width = el_width + "px";
+        player2_el.style.width = el_width + "px";
+    }
+    
+    function onresize()
+    {
+        resize_board();
+        resize_players()
     }
     
     function get_legal_moves(cb)
     {
-        engine.send("d", function ond(str)
+        evaler.send("d", function ond(str)
         {
             var san = str.match(/Legal moves\:(.*)/),
                 uci = str.match(/Legal uci moves\:(.*)/),
@@ -372,13 +407,13 @@
     {
         var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
         
-        ai_thinking -= 1;
+        board.players[board.turn].engine.ai_thinking -= 1;
         
-        if (discard_move) {
-            discard_move -= 1;
-            if (discard_move < 0) {
-                console.log("Too many discard_move's: " + discard_move);
-                discard_move = 0;
+        if (board.players[board.turn].engine.discard_move) {
+            board.players[board.turn].engine.discard_move -= 1;
+            if (board.players[board.turn].engine.discard_move < 0) {
+                console.log("Too many discard_move's: " + board.players[board.turn].engine.discard_move);
+                board.players[board.turn].engine.discard_move = 0;
             }
             return;
         }
@@ -398,7 +433,7 @@
     
     function onthinking(str)
     {
-        //console.log("thinking: " + str);
+        console.log("thinking: " + str);
     }
     
     function set_ai_position()
@@ -409,16 +444,26 @@
             cmd += " moves " + board.moves.join(" ");
         }
         
-        engine.send(cmd);
+        if (evaler) {
+            evaler.send(cmd);
+        }
+        if (board.players.w.type === "ai") {
+            board.players.w.engine.send(cmd)
+        }
+        if (board.players.b.type === "ai") {
+            board.players.b.engine.send(cmd)
+        }
     }
     
     function tell_engine_to_move()
     {
         if (board.players[board.turn].type === "ai") {
-            ai_thinking += 1;
+            board.players[board.turn].engine.ai_thinking += 1;
             //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
             /// Without time, it thinks really fast.
-            engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 100000 btime 100000" , onengine_move, onthinking);
+            //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 1800000 btime 1800000" , onengine_move, onthinking);
+            //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 200000 btime 200000" , onengine_move, onthinking);
+            board.players[board.turn].engine.send("go " + (typeof board.players[board.turn].engine.depth !== "undefined" ? "depth " + board.players[board.turn].engine.depth : "") + " wtime 500000 btime 500000" , onengine_move, onthinking);
             return true;
         }
     }
@@ -431,17 +476,19 @@
         set_legal_moves(tell_engine_to_move);
     }
     
-    function stop_ai()
+    function stop_ai(engine)
     {
-        if (ai_thinking) {
-            discard_move += 1;
+        /// Is the engine currently thinking of a move.
+        if (engine && engine.ai_thinking) {
+            /// Discard the result of the thinking.
+            engine.discard_move += 1;
             engine.send("stop");
         }
     }
     
     function start_new_game()
     {
-        if (!engine.ready || starting_new_game) {
+        if (!evaler.ready || starting_new_game) {
             return;
         }
         
@@ -454,12 +501,22 @@
             board.set_board();
         }
         
-        stop_ai();
         
-        engine.send("ucinewgame");
+        evaler.send("ucinewgame");
+        
+        ///TODO: Need a better loading thing for each indivually.
+        if (board.players.w.type === "ai") {
+            stop_ai(board.players.w.engine);
+            board.players.w.engine.send("ucinewgame");
+        }
+        if (board.players.b.type === "ai") {
+            board.players.b.engine.send("ucinewgame");
+            stop_ai(board.players.b.engine);
+        }
         
         set_ai_position();
-        
+        //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
+        //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
         set_legal_moves(function onset()
         {
             loading_el.classList.add("hidden");
@@ -467,6 +524,189 @@
             tell_engine_to_move();
             starting_new_game = false;
         });
+    }
+    //setInterval(start_new_game, 30000);
+    
+    function change_selected(el, value)
+    {
+        var i;
+        
+        for (i = el.options.length - 1; i >= 0; i -= 1) {
+            if (el.options[i].value === value) {
+                el.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    
+    function make_type_change(player)
+    {
+        function set_type(type)
+        {
+            if (type === "human" || type === "ai") {
+                change_selected(player.els.type, type);
+                
+                if (type !== player.type) {
+                    player.type = type;
+                    if (player.type === "ai") {
+                        if (!player.engine) {
+                            player.engine = load_engine();
+                        }
+                        
+                        /// Set the AI level if not already.
+                        player.set_level(player.level);
+                        
+                        if (board.mode === "play") {
+                            set_ai_position();
+                            tell_engine_to_move();
+                        }
+                        player.els.level.style.display = "block";
+                    } else {
+                        stop_ai(player.engine);
+                        player.els.level.style.display = "none";
+                    }
+                }
+            }
+        }
+        
+        function onchange()
+        {
+            set_type(this.value);
+        }
+        
+        player.set_type = set_type;
+        
+        return onchange;
+    }
+    
+    function make_set_level(player)
+    {
+        function set_level(level)
+        {
+            var depth,
+                err_prob,
+                max_err;
+            
+            if (level < 0) {
+                level = 0;
+            }
+            if (level > 20) {
+                level = 20;
+            }
+            
+            if (level === player.engine.level) {
+                return false;
+            }
+            
+            /// Change thinking depth allowance.
+            if (level < 2) {
+                depth = "1";
+            } else if (level < 4) {
+                depth = "2";
+            } else if (level < 6) {
+                depth = "3";
+            } else if (level < 8) {
+                depth = "4";
+            } else if (level < 10) {
+                depth = "5";
+            } else if (level < 12) {
+                depth = "6";
+            } else if (level < 14) {
+                depth = "8";
+            } else if (level < 16) {
+                depth = "10";
+            }
+            
+            player.engine.level = level;
+            player.engine.depth = depth;
+            
+            change_selected(player.els.level, level);
+            
+            if (player.engine) {
+                player.engine.send("setoption name Skill Level value " + level);
+                
+                ///NOTE: Stockfish level 20 does not make errors (intentially), so these numbers have no effect on level 20.
+                /// Level 0 starts at 1
+                err_prob = Math.round((level * 6.35) + 1);
+                /// Level 0 starts at 10
+                max_err = Math.round((level * -0.5) + 10);
+                
+                player.engine.err_prob = err_prob;
+                player.engine.max_err  = max_err;
+                
+                player.engine.send("setoption name Skill Level Maximum Error value " + max_err);
+                player.engine.send("setoption name Skill Level Probability value " + err_prob);
+            }
+        }
+        
+        function onchange()
+        {
+            set_level(parseFloat(this.value));
+        }
+        
+        player.set_level = set_level;
+        
+        return onchange;
+    }
+    
+    function add_player_els(el, player)
+    {
+        var level_el = G.cde("select", null, {all_on_changes: make_set_level(player)}, [
+            G.cde("option", {t:  0, value:  0, selected: player.level ===  0}),
+            G.cde("option", {t:  1, value:  1, selected: player.level ===  1}),
+            G.cde("option", {t:  2, value:  2, selected: player.level ===  2}),
+            G.cde("option", {t:  3, value:  3, selected: player.level ===  3}),
+            G.cde("option", {t:  4, value:  4, selected: player.level ===  4}),
+            G.cde("option", {t:  5, value:  5, selected: player.level ===  5}),
+            G.cde("option", {t:  6, value:  6, selected: player.level ===  6}),
+            G.cde("option", {t:  7, value:  7, selected: player.level ===  7}),
+            G.cde("option", {t:  8, value:  8, selected: player.level ===  8}),
+            G.cde("option", {t:  9, value:  9, selected: player.level ===  9}),
+            G.cde("option", {t: 10, value: 10, selected: player.level === 10}),
+            G.cde("option", {t: 11, value: 11, selected: player.level === 11}),
+            G.cde("option", {t: 12, value: 12, selected: player.level === 12}),
+            G.cde("option", {t: 13, value: 13, selected: player.level === 13}),
+            G.cde("option", {t: 14, value: 14, selected: player.level === 14}),
+            G.cde("option", {t: 15, value: 15, selected: player.level === 15}),
+            G.cde("option", {t: 16, value: 16, selected: player.level === 16}),
+            G.cde("option", {t: 17, value: 17, selected: player.level === 17}),
+            G.cde("option", {t: 18, value: 18, selected: player.level === 18}),
+            G.cde("option", {t: 19, value: 19, selected: player.level === 19}),
+            G.cde("option", {t: 20, value: 20, selected: player.level === 20}),
+        ]);
+        
+        var type_el = G.cde("select", null, {all_on_changes: make_type_change(player)}, [
+            G.cde("option", {t: "Human", value: "human", selected: player.type === "human"}),
+            G.cde("option", {t: "Computer", value: "ai", selected: player.type === "ai"}),
+        ]);
+        
+        el.appendChild(type_el);
+        el.appendChild(level_el);
+        
+        player.els = {
+            type: type_el,
+            level: level_el
+        };
+    }
+    
+    function create_players()
+    {
+        player1_el.classList.add("player");
+        player1_el.classList.add("left_player");
+        player2_el.classList.add("player");
+        player2_el.classList.add("right_player");
+        
+        board.players.w.level = 0;
+        board.players.b.level = 0;
+        
+        add_player_els(player1_el, board.players.w);
+        add_player_els(player2_el, board.players.b);
+        
+        board.el.parentNode.insertBefore(player1_el, board.el);
+        board.el.parentNode.insertBefore(player2_el, board.el.nextSibling);
+        
+        board.players.w.set_type("human");
+        board.players.b.set_type("ai");
     }
     
     function init()
@@ -482,16 +722,31 @@
         
         document.documentElement.appendChild(loading_el);
         
+        create_players();
+        
         board.wait();
         
         board.onmove = onmove;
         
-        engine = load_engine();
+        //engine = load_engine();
         evaler = load_engine();
         
-        engine.send("uci", function onuci(str)
+        evaler.stream = function (line)
         {
-            engine.send("isready", function onready()
+            /*
+            if (line.substr(0, 4) === "info") {
+                player1_el.textContent = line;
+            }
+            */
+            console.log(line);
+        }
+        
+        //board.players.b.type = "human";
+        //board.players.w.type = "ai";
+        
+        evaler.send("uci", function onuci(str)
+        {
+            evaler.send("isready", function onready()
             {
                 console.log("ready");
                 start_new_game();
