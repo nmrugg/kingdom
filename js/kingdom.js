@@ -457,13 +457,39 @@
     
     function tell_engine_to_move()
     {
+        var default_time = 500000,
+            wtime,
+            btime,
+            depth;
+        
         if (board.players[board.turn].type === "ai") {
             board.players[board.turn].engine.ai_thinking += 1;
             //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
             /// Without time, it thinks really fast.
             //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 1800000 btime 1800000" , onengine_move, onthinking);
             //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 200000 btime 200000" , onengine_move, onthinking);
-            board.players[board.turn].engine.send("go " + (typeof board.players[board.turn].engine.depth !== "undefined" ? "depth " + board.players[board.turn].engine.depth : "") + " wtime 500000 btime 500000" , onengine_move, onthinking);
+            if (board.players.w.time_type === "none") {
+                wtime = default_time;
+            } else {
+                ///TODO: Use clock.
+                wtime = board.players.w.time;
+                
+            }
+            if (board.players.b.time_type === "none") {
+                btime = default_time;
+            } else {
+                ///TODO: Use clock.
+                btime = board.players.b.time;
+            }
+            
+            /// If there's no time limit, limit the depth on some players.
+            ///NOTE: There's no reason not to limit depth 1 since it's always fast.
+            if (board.players[board.turn].time_type === "none" || Number(board.players[board.turn].engine.depth) === 1) {
+                depth = board.players[board.turn].engine.depth;
+            }
+            
+            
+            board.players[board.turn].engine.send("go " + (typeof depth !== "undefined" ? "depth " + depth : "") + " wtime " + wtime + " btime " + btime , onengine_move, onthinking);
             return true;
         }
     }
@@ -560,7 +586,7 @@
                             set_ai_position();
                             tell_engine_to_move();
                         }
-                        player.els.level.style.display = "block";
+                        player.els.level.style.display = "inline";
                     } else {
                         stop_ai(player.engine);
                         player.els.level.style.display = "none";
@@ -629,7 +655,7 @@
                 /// Level 0 starts at 1
                 err_prob = Math.round((level * 6.35) + 1);
                 /// Level 0 starts at 10
-                max_err = Math.round((level * -0.5) + 10);
+                max_err = Math.round((level * -0.25) + 5);
                 
                 player.engine.err_prob = err_prob;
                 player.engine.max_err  = max_err;
@@ -645,6 +671,107 @@
         }
         
         player.set_level = set_level;
+        
+        return onchange;
+    }
+    
+    function time_from_str(str)
+    {
+        var split,
+            mil = 0,
+            sec = 0,
+            min = 0,
+            hour = 0,
+            day = 0;
+        
+        if (typeof str === "number") {
+            return str;
+        } else if (typeof str === "string") {
+            split = str.split(":");
+            //console.log(split);
+            if (split.length === 1) {
+                sec = split[0];
+            } else if (split.length === 2) {
+                min = split[0];
+                sec = split[1];
+            } else if (split.length === 3) {
+                hour = split[0];
+                min  = split[1];
+                sec  = split[2];
+            } else if (split.length > 3) {
+                day  = split[0];
+                hour = split[1];
+                min  = split[2];
+                sec  = split[3];
+            }
+            split = sec.split(".");
+            if (split.length === 2) {
+                sec = split[0];
+                mil = split[1];
+                if (mil.length === 1) {
+                    mil *= 100;
+                } else if (mil.length === 2) {
+                    mil *= 10;
+                } else {
+                    /// It can't be greater than 999 (i.e., longer than 3 digits).
+                    mil = mil.substr(0, 3);
+                }
+            } else {
+                sec = String(Math.round(sec));
+            }
+            
+            return Number(mil) + (sec * 1000) + (min * 1000 * 60) + (hour * 1000 * 60 * 60) + (day * 1000 * 60 * 60 * 24);
+        }
+    }
+    
+    function make_set_time_type(player)
+    {
+        function set_time_type(type)
+        {
+            if (type !== "none" && type !== "sd") {
+                type = "none";
+            }
+            
+            change_selected(player.els.time_type, type);
+            
+            player.time_type = type;
+            
+            if (type === "sd") {
+                player.els.sd_container.style.display = "block";
+                player.set_sd_time();
+            } else {
+                player.els.sd_container.style.display = "none";
+            }
+        }
+        
+        function onchange()
+        {
+            set_time_type(this.value);
+        }
+        
+        player.set_time_type = set_time_type;
+        
+        return onchange;
+    }
+    
+    function make_set_sd_time(player)
+    {
+        function set_sd_time(time)
+        {
+            if (typeof time === "undefined") {
+                time = player.els.sd.value;
+            }
+            
+            player.time = time_from_str(time);
+            ///TODO: Start clock.
+        }
+        
+        function onchange()
+        {
+            set_sd_time(this.value);
+        }
+        
+        player.set_sd_time = set_sd_time;
         
         return onchange;
     }
@@ -680,12 +807,49 @@
             G.cde("option", {t: "Computer", value: "ai", selected: player.type === "ai"}),
         ]);
         
+        ///
+        /// Time
+        ///
+        var time_container = G.cde("div");
+        var sd_container = G.cde("div");
+        
+        if (!player.time) {
+            player.time = {};
+        }
+        
+        var time_type_el = G.cde("select", null, {all_on_changes: make_set_time_type(player)}, [
+            G.cde("option", {t: "none", value: "none", selected: player.time.type === "none"}),
+            G.cde("option", {t: "Sudden Death", value: "sd", selected: player.time.type === "sd"}),
+        ]);
+        
+        var sd_el = G.cde("input", {type: "text", value: player.time.sd || "5:00"}, {all_on_changes: make_set_sd_time(player)});
+        
+        sd_container.appendChild(G.cde("", [
+            "Time: ",
+            sd_el,
+        ]));
+        
+        time_container.appendChild(G.cde("", [
+            "Time type: ",
+            time_type_el,
+            sd_container,
+        ]));
+        
+        ///
+        /// Add elements
+        ///
+        
         el.appendChild(type_el);
         el.appendChild(level_el);
+        el.appendChild(time_container);
         
         player.els = {
             type: type_el,
-            level: level_el
+            level: level_el,
+            time_container: time_container,
+            time_type: time_type_el,
+            sd_container: sd_container,
+            sd: sd_el,
         };
     }
     
@@ -707,6 +871,9 @@
         
         board.players.w.set_type("human");
         board.players.b.set_type("ai");
+        
+        board.players.w.set_time_type("none");
+        board.players.b.set_time_type("none");
     }
     
     function init()
