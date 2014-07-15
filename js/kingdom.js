@@ -465,7 +465,8 @@
     
     function tell_engine_to_move()
     {
-        var default_time = 500000,
+        ///NOTE: Without time, it thinks really fast. So, we give it a something to make it move reasonably quickly.
+        var default_time = 1000 * 60 * 2, /// 2 minutes
             wtime,
             btime,
             depth,
@@ -484,7 +485,7 @@
                 }, 100);
             }
             //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
-            /// Without time, it thinks really fast.
+            
             //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 1800000 btime 1800000" , onengine_move, onthinking);
             //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 200000 btime 200000" , onengine_move, onthinking);
             if (board.players.w.time_type === "none") {
