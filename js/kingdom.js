@@ -10,7 +10,8 @@
         loading_el,
         player1_el = document.createElement("div"),
         player2_el = document.createElement("div"),
-        starting_new_game;
+        starting_new_game,
+        retry_move_timer;
     
     function array_remove(arr, i, order_irrelevant)
     {
@@ -467,9 +468,21 @@
         var default_time = 500000,
             wtime,
             btime,
-            depth;
+            depth,
+            player = board.players[board.turn];
         
-        if (board.players[board.turn].type === "ai") {
+        if (player.type === "ai") {
+            if (!player.engine.loaded || !player.engine.ready) {
+                show_loading();
+                return retry_move_timer = setInterval(function onretry()
+                {
+                    if (player.engine.loaded && player.engine.ready) {
+                        hide_loading();
+                        clearInterval(retry_move_timer);
+                        tell_engine_to_move();
+                    }
+                }, 100);
+            }
             //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
             /// Without time, it thinks really fast.
             //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 1800000 btime 1800000" , onengine_move, onthinking);
@@ -490,12 +503,12 @@
             
             /// If there's no time limit, limit the depth on some players.
             ///NOTE: There's no reason not to limit depth 1 since it's always fast.
-            if (board.players[board.turn].time_type === "none" || Number(board.players[board.turn].engine.depth) === 1) {
-                depth = board.players[board.turn].engine.depth;
+            if (player.time_type === "none" || Number(player.engine.depth) === 1) {
+                depth = player.engine.depth;
             }
             
             
-            board.players[board.turn].engine.send("go " + (typeof depth !== "undefined" ? "depth " + depth : "") + " wtime " + wtime + " btime " + btime , onengine_move, onthinking);
+            player.engine.send("go " + (typeof depth !== "undefined" ? "depth " + depth : "") + " wtime " + wtime + " btime " + btime , onengine_move, onthinking);
             return true;
         }
     }
@@ -562,6 +575,9 @@
         
         starting_new_game = true;
         
+        /// Prevent possible future moves.
+        clearInterval(retry_move_timer);
+        
         ///TODO: Need a better loading thing for each indivually.
         if (board.players.w.type === "ai") {
             board.players.w.engine.stop_moves();
@@ -591,8 +607,7 @@
             set_legal_moves(function onset()
             {
                 starting_new_game = false;
-                loading_el.classList.add("hidden");
-                board.play();
+                hide_loading();
                 tell_engine_to_move();
             });
         });
@@ -623,6 +638,12 @@
                     if (player.type === "ai") {
                         if (!player.engine) {
                             player.engine = load_engine();
+                            ///NOTE: This shows that it's loaded so that we know that it can move.
+                            player.engine.send("uci", function onload()
+                            {
+                                /// Make sure it's all ready too.
+                                player.engine.send("isready");
+                            }); 
                         }
                         
                         /// Set the AI level if not already.
@@ -922,6 +943,12 @@
         
         board.players.w.set_time_type("none");
         board.players.b.set_time_type("none");
+    }
+    
+    function hide_loading()
+    {
+        loading_el.classList.add("hidden");
+        board.play();
     }
     
     function show_loading()
