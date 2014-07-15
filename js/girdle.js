@@ -173,7 +173,11 @@ var G = (function ()
                 if (Array.isArray(children)) {
                     children.forEach(function (child)
                     {
-                        el.appendChild(child);
+                        if (typeof child === "string") {
+                            el.appendChild(document.createTextNode(child));
+                        } else {
+                            el.appendChild(child);
+                        }
                     });
                 }
                 
