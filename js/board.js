@@ -406,7 +406,7 @@ var BOARD = function board_init(el, options)
     
     function promote_piece(piece, uci)
     {
-        if (uci.length === 5 && /[qrbn]/.test(uci[4])) {
+        if (piece && uci.length === 5 && /[qrbn]/.test(uci[4])) {
             piece.type = uci[4];
             piece.el.style.backgroundImage = get_piece_img(piece);
         }
@@ -606,8 +606,10 @@ var BOARD = function board_init(el, options)
         
         piece = get_piece_from_rank_file(positions.starting.rank, positions.starting.file);
         
-        move_piece(piece, ending_square, uci);
-        promote_piece(piece, uci);
+        if (piece) {
+            move_piece(piece, ending_square, uci);
+            promote_piece(piece, uci);
+        }
     }
     
     function track_move(uci)
@@ -636,6 +638,7 @@ var BOARD = function board_init(el, options)
         },
         switch_turn: switch_turn,
         set_board: set_board,
+        is_legal_move: is_legal_move,
         moves: []
     /// legal_move[]
     /// onmove()
