@@ -1182,7 +1182,7 @@
                 day;
             
             time = parseFloat(time);
-            //console.log(time);
+            
             if (time < 0) {
                 sign = "-"
             }
@@ -1202,6 +1202,42 @@
                     sec = "0" + sec;
                 }
                 res = min + ":" + sec;
+            } else if (time < 86400000) { /// Less than 1 day
+                /// Always floor since we don't want to round to 60.
+                sec  = Math.floor((time % 60000) / 1000);
+                hour = Math.floor(time / 60000);
+                min  = Math.floor(hour % 60);
+                hour = (hour - min) / 60;
+                
+                if (sec < 10) {
+                    sec = "0" + sec;
+                }
+                if (min < 10) {
+                    min = "0" + min;
+                }
+                
+                res = hour + ":" + min + ":" + sec;
+                
+            } else { /// Days
+                /// Always floor since we don't want to round to 60.
+                sec  = Math.floor((time % 60000) / 1000);
+                hour = Math.floor(time / 60000);
+                min  = Math.floor(hour % 60);
+                hour = (hour - min) / 60;
+                day = Math.floor(hour / 24);
+                hour = hour % 24;
+                
+                if (sec < 10) {
+                    sec = "0" + sec;
+                }
+                if (min < 10) {
+                    min = "0" + min;
+                }
+                if (hour < 10) {
+                    hour = "0" + hour;
+                }
+                
+                res = day + ":" + hour + ":" + min + ":" + sec;
             }
             
             return sign + res;
