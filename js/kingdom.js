@@ -10,7 +10,8 @@
         player1_el = document.createElement("div"),
         player2_el = document.createElement("div"),
         starting_new_game,
-        retry_move_timer;
+        retry_move_timer,
+        clock_manager;
     
     function array_remove(arr, i, order_irrelevant)
     {
@@ -262,6 +263,9 @@
         
         player1_el.style.width = el_width + "px";
         player2_el.style.width = el_width + "px";
+        
+        clock_manager.clock_els.w.style.width = el_width + "px";
+        clock_manager.clock_els.b.style.width = el_width + "px";
     }
     
     function onresize()
@@ -417,6 +421,7 @@
                         }
                     }
                     board.wait();
+                    G.events.trigger("gamePaused");
                 }
             }
         });
@@ -485,13 +490,28 @@
     function tell_engine_to_move()
     {
         ///NOTE: Without time, it thinks really fast. So, we give it a something to make it move reasonably quickly.
-        var default_time = 1000 * 60 * 2, /// 2 minutes
+        ///      This time is also tweaked based on the level.
+        var default_time = 1000 * 60, /// 1 minute
             wtime,
             btime,
             depth,
             player = board.players[board.turn];
         
+        function tweak_default_time(player)
+        {
+            var level;
+            
+            if (player.type === "ai") {
+                level = player.engine.level;
+            } else {
+                level = 20;
+            }
+            return default_time + (default_time * (level / 20));
+        }
+        
         if (player.type === "ai") {
+            /// Pause the game if the computer is not ready.
+            ///TODO: Unpause when changed to human.
             if (!player.engine.loaded || !player.engine.ready) {
                 show_loading();
                 return retry_move_timer = setInterval(function onretry()
@@ -503,21 +523,20 @@
                     }
                 }, 100);
             }
+            
             //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
             
             //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 1800000 btime 1800000" , onengine_move, onthinking);
             //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 200000 btime 200000" , onengine_move, onthinking);
             if (board.players.w.time_type === "none") {
-                wtime = default_time;
+                wtime = tweak_default_time(board.players.w);
             } else {
-                ///TODO: Use clock.
                 wtime = board.players.w.time;
                 
             }
             if (board.players.b.time_type === "none") {
-                btime = default_time;
+                btime = tweak_default_time(board.players.b);
             } else {
-                ///TODO: Use clock.
                 btime = board.players.b.time;
             }
             
@@ -850,7 +869,6 @@
             }
             
             player.time = time_from_str(time);
-            ///TODO: Start clock.
         }
         
         function onchange()
@@ -943,9 +961,9 @@
     function create_players()
     {
         player1_el.classList.add("player");
-        player1_el.classList.add("left_player");
+        player1_el.classList.add("player_white");
         player2_el.classList.add("player");
-        player2_el.classList.add("right_player");
+        player2_el.classList.add("player_black");
         
         board.players.w.level = 0;
         board.players.b.level = 0;
@@ -967,6 +985,7 @@
     {
         loading_el.classList.add("hidden");
         board.play();
+        G.events.trigger("gameUnpaused");
     }
     
     function show_loading()
@@ -980,6 +999,7 @@
         }
         
         board.wait();
+        G.events.trigger("gamePaused");
     }
     
     function init()
@@ -1026,6 +1046,60 @@
             start_new_game();
         }
     });
+    
+    
+    clock_manager = (function make_clocks()
+    {
+        var last_time,
+            tick_timer,
+            clock_els = {
+                w: G.cde("div", {c: "clock clock_white"}),
+                b: G.cde("div", {c: "clock clock_black"})
+            },
+            clock_manager = {};
+        
+        function tick(color)
+        {
+            var now = Date.now(),
+                diff,
+                player = board.players[color || board.turn];
+            
+            diff = now - last_time;
+            last_time = now;
+            
+            if (player.time_type !== "none") {
+                player.time -= diff;
+                clock_els[color || board.turn].textContent = player.time;
+            }
+        }
+        
+        function start_timer()
+        {
+            last_time = Date.now();
+            tick_timer = setInterval(tick, 50);
+        }
+        
+        function stop_timer()
+        {
+            clearInterval(tick_timer);
+        }
+        
+        board.onswitch = function onswitch()
+        {
+            console.log("SWITCH");
+            tick(board.turn === "w" ? "b" : "w");
+        }
+        
+        board.el.parentNode.insertBefore(clock_els.w, board.el);
+        board.el.parentNode.insertBefore(clock_els.b, board.el.nextSibling);
+        
+        G.events.attach("gameUnpaused", start_timer);
+        G.events.attach("gamePaused", stop_timer);
+        
+        clock_manager.clock_els = clock_els;
+        
+        return clock_manager;
+    }());
     
     init();
 }());

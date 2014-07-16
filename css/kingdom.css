@@ -36,3 +36,31 @@ html, body {
 .right_player {
     right: 0;
 }
+
+.player {
+    position: absolute;
+    width: 20%;
+    top: 0;
+}
+
+.player_white {
+    left: 0;
+}
+
+.player_black {
+    right: 0;
+}
+
+.clock {
+    position: absolute;
+    bottom: 0;
+}
+
+.clock_white {
+    left: 0;
+}
+
+.clock_black {
+    right: 0;
+}
+
