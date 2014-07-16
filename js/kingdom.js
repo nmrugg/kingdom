@@ -265,8 +265,8 @@
         player1_el.style.width = el_width + "px";
         player2_el.style.width = el_width + "px";
         
-        clock_manager.clock_els.w.style.width = el_width + "px";
-        clock_manager.clock_els.b.style.width = el_width + "px";
+        clock_manager.clock_els.w.style.width = (el_width - 10) + "px";
+        clock_manager.clock_els.b.style.width = (el_width - 10) + "px";
     }
     
     function onresize()
@@ -1192,7 +1192,7 @@
                 res = (time / 1000).toFixed(3); /// Show decimal
             } else if (time < 60000) { /// Less than 1 minute
                 /// Always floor since we don't want to round to 60.
-                res = Math.floor(time / 1000);
+                res = "0:" + Math.floor(time / 1000);
             } else if (time < 3600000) { /// Less than 1 hour
                 //debugger;
                 /// Always floor since we don't want to round to 60.
@@ -1269,7 +1269,7 @@
         clock_manager.clear = function clear(color)
         {
             if (clock_els[color]) {
-                clock_els[color].textContent = "";
+                clock_els[color].textContent = "--";
             }
         }
         
