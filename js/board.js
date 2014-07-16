@@ -636,8 +636,12 @@ var BOARD = function board_init(el, options)
         play: play,
         move: move,
         players: {
-            w: {},
-            b: {}
+            w: {
+                color: "w",
+            },
+            b: {
+                color: "b",
+            }
         },
         switch_turn: switch_turn,
         set_board: set_board,

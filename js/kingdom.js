@@ -864,11 +864,19 @@
     {
         function set_sd_time(time)
         {
+            var time_val;
+            
             if (typeof time === "undefined") {
                 time = player.els.sd.value;
             }
             
-            player.time = time_from_str(time);
+            time_val = time_from_str(time);
+            
+            if (time_val !== player.start_time) {
+                player.time = time_val;
+                player.start_time = time_val;
+                clock_manager.update_clock(player.color)
+            }
         }
         
         function onchange()
@@ -1069,7 +1077,7 @@
             
             if (player.time_type !== "none") {
                 player.time -= diff;
-                clock_els[color || board.turn].textContent = player.time;
+                update_clock(color || board.turn);
             }
         }
         
@@ -1082,6 +1090,46 @@
         function stop_timer()
         {
             clearInterval(tick_timer);
+        }
+        
+        function format_time(time)
+        {
+            var sign = "",
+                res,
+                sec,
+                min,
+                hour,
+                day;
+            
+            time = parseFloat(time);
+            //console.log(time);
+            if (time < 0) {
+                sign = "-"
+            }
+            time = Math.abs(time);
+            
+            if (time < 10000) { /// Less than 10 sec
+                res = (time / 1000).toFixed(3); /// Show decimal
+            } else if (time < 60000) { /// Less than 1 minute
+                /// Always floor since we don't want to round to 60.
+                res = Math.floor(time / 1000);
+            } else if (time < 3600000) { /// Less than 1 hour
+                //debugger;
+                /// Always floor since we don't want to round to 60.
+                sec = Math.floor((time % 60000) / 1000);
+                min = Math.floor(time / 60000);
+                if (sec < 10) {
+                    sec = "0" + sec;
+                }
+                res = min + ":" + sec;
+            }
+            
+            return sign + res;
+        }
+        
+        function update_clock(color)
+        {
+            clock_els[color].textContent = format_time(board.players[color].time);
         }
         
         board.onswitch = function onswitch()
@@ -1097,6 +1145,8 @@
         G.events.attach("gamePaused", stop_timer);
         
         clock_manager.clock_els = clock_els;
+        
+        clock_manager.update_clock = update_clock;
         
         return clock_manager;
     }());
