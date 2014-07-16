@@ -323,16 +323,50 @@
         });
     }
     
-    function is_stalemate_by_rule(fen, key)
+    function is_insufficient_material(color)
     {
         var i,
-            count = 1,
             piece_counts = {
                 knights: 0,
                 bishops: 0,
                 light_bishops: 0
             },
             piece_type;
+        
+        /// Check insufficient material
+        /// 1. Only Kings
+        /// 2. Kings and one knight
+        /// 3. Kings and any number of bishops on either or one side all of which are on the same color
+        ///NOTE: Could examine the fen position too, but it would take a little more work to determine bishop color.
+        if (board.pieces) {
+            for (i = board.pieces.length - 1; i >= 0; i -= 1) {
+                /// Make sure the piece is on the board and it is one that we are counting.
+                if (!board.pieces[i].captured && (!color || board.pieces[i].color === color)) {
+                    piece_type = board.pieces[i].type;
+                    if (piece_type === "p" || piece_type === "r" || piece_type === "q") {
+                        piece_counts.others = 1;
+                        break;
+                        /// We found a mating piece. Stop now.
+                    } else if (piece_type === "n") {
+                        piece_counts.knights += 1;
+                    } else if (piece_type === "b") {
+                        piece_counts.bishops += 1;
+                        if ((board.pieces[i].rank + board.pieces[i].file) % 2) {
+                            piece_counts.light_bishops += 1;
+                        }
+                    }
+                }
+            }
+            if (!piece_counts.others && ((!piece_counts.knights && !piece_counts.bishops) || ((piece_counts.knights === 1 && !piece_counts.bishops) ||(!piece_counts.knights && (piece_counts.light_bishops === 0 || (piece_counts.bishops === piece_counts.light_bishops)))))) {
+                return true;
+            }
+        }
+    }
+    
+    function is_stalemate_by_rule(fen, key)
+    {
+        var i,
+            count = 1;
         
         /// Check 50 move rull
         if (fen.half_move_clock > 99) {
@@ -357,32 +391,8 @@
             }
         }
         
-        /// Check insufficient material
-        /// 1. Only Kings
-        /// 2. Kings and one knight
-        /// 3. Kings and any number of bishops on either or one side all of which are on the same color
-        ///NOTE: Could examine the fen position too, but it would take a little more work to determine bishop color.
-        if (board.pieces) {
-            for (i = board.pieces.length - 1; i >= 0; i -= 1) {
-                if (!board.pieces[i].captured) {
-                    piece_type = board.pieces[i].type;
-                    if (piece_type === "p" || piece_type === "r" || piece_type === "q") {
-                        piece_counts.others = 1;
-                        break;
-                        /// We found a mating piece. Stop now.
-                    } else if (piece_type === "n") {
-                        piece_counts.knights += 1;
-                    } else if (piece_type === "b") {
-                        piece_counts.bishops += 1;
-                        if ((board.pieces[i].rank + board.pieces[i].file) % 2) {
-                            piece_counts.light_bishops += 1;
-                        }
-                    }
-                }
-            }
-            if (!piece_counts.others && ((!piece_counts.knights && !piece_counts.bishops) || ((piece_counts.knights === 1 && !piece_counts.bishops) ||(!piece_counts.knights && (piece_counts.light_bishops === 0 || (piece_counts.bishops === piece_counts.light_bishops)))))) {
-                return "material";
-            }
+        if (is_insufficient_material()) {
+            return "material";
         }
     }
     
@@ -434,6 +444,10 @@
             player = board.players[board.turn],
             move,
             ponder;
+        
+        if (board.mode !== "play") {
+            return;
+        }
         
         if (!res) {
             error("Can't get move: " + str);
@@ -499,6 +513,10 @@
             btime,
             depth,
             player = board.players[board.turn];
+        
+        if (board.mode !== "play") {
+            return;
+        }
         
         function tweak_default_time(player)
         {
@@ -628,14 +646,8 @@
         reset_clock("b");
     }
     
-    function start_new_game()
+    function stop_game()
     {
-        if (starting_new_game) {
-            return;
-        }
-        
-        starting_new_game = true;
-        
         /// Prevent possible future moves.
         clearInterval(retry_move_timer);
         
@@ -648,6 +660,17 @@
             board.players.b.engine.stop_moves();
             board.players.b.engine.send("ucinewgame");
         }
+    }
+    
+    function start_new_game()
+    {
+        if (starting_new_game) {
+            return;
+        }
+        
+        starting_new_game = true;
+        
+        stop_game();
         
         show_loading();
         
@@ -1108,7 +1131,17 @@
             
             if (player.time_type !== "none") {
                 player.time -= diff;
-                update_clock(color || board.turn);
+                update_clock(player.color);
+                if (player.time < 0) {
+                    if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
+                        alert("Stalemate: Player with time has insufficient material");
+                    } else {
+                        alert((player.color === "w" ? "White" : "Black") + " loses on time.");
+                    }
+                    stop_game();
+                    board.wait();
+                    G.events.trigger("gamePaused");
+                }
             }
         }
         
