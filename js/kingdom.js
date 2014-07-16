@@ -1092,9 +1092,10 @@
             tick_timer,
             clock_els = {
                 w: G.cde("div", {c: "clock clock_white"}),
-                b: G.cde("div", {c: "clock clock_black"})
+                b: G.cde("div", {c: "clock clock_black"}),
             },
-            clock_manager = {};
+            clock_manager = {},
+            timer_on;
         
         function tick(color)
         {
@@ -1117,12 +1118,14 @@
             if (board.messy) {
                 last_time = Date.now();
                 tick_timer = setInterval(tick, 50);
+                timer_on = true;
             }
         }
         
         function stop_timer()
         {
             clearInterval(tick_timer);
+            timer_on = false;
         }
         
         function format_time(time)
@@ -1167,7 +1170,7 @@
         
         board.onswitch = function onswitch()
         {
-            if (last_time) {
+            if (timer_on) {
                 tick(board.turn === "w" ? "b" : "w");
             }
         }
