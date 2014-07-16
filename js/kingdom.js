@@ -3,7 +3,6 @@
     "use strict";
     
     var board = BOARD("board"),
-        game = {},
         zobrist_keys,
         stalemate_by_rules,
         evaler,
@@ -401,6 +400,7 @@
                 board.legal_moves = [];
                 if (board.mode === "play") {
                     /// Was it checkmate?
+                    //return start_new_game();
                     if (moves.checkers.length && !stalemate_by_rules) {
                         alert((board.turn === "b" ? "Black" : "White") + " is checkmated!");
                     } else {
@@ -424,16 +424,35 @@
     
     function onengine_move(str)
     {
-        var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+        var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/),
+            player = board.players[board.turn],
+            move,
+            ponder;
         
         if (!res) {
             error("Can't get move: " + str);
         }
         
-        ///TODO: Allow ponder.
-        game.ai_ponder = res[2];
+        if (!board.is_legal_move(res[1])) {
+            console.log("!!!!!!!!!!!!!!!!!!!!!!!!");
+            console.log("ILLEGAL MOVE: " + res[1]);
+            console.log("!!!!!!!!!!!!!!!!!!!!!!!!");
+            
+            if (!board.legal_moves || !board.legal_moves.uci) {
+                error("Cannot find a legal move");
+            }
+            /// Just use the first legal move
+            move = board.legal_moves.uci[0];
+            ponder = "";
+        } else {
+            move = res[1];
+            ponder = res[2];
+        }
         
-        board.move(res[1]);
+        ///TODO: Allow ponder.
+        player.engine.ponder_move = ponder;
+        
+        board.move(move);
         set_ai_position();
         
         set_legal_moves(tell_engine_to_move);
@@ -504,10 +523,12 @@
             
             /// If there's no time limit, limit the depth on some players.
             ///NOTE: There's no reason not to limit depth 1 since it's always fast.
-            if (player.time_type === "none" || Number(player.engine.depth) === 1) {
+            //if (player.time_type === "none" || Number(player.engine.depth) === 1) {
+            if (player.time_type === "none") {
                 depth = player.engine.depth;
             }
             
+            //depth = 1;
             
             player.engine.send("go " + (typeof depth !== "undefined" ? "depth " + depth : "") + " wtime " + wtime + " btime " + btime , onengine_move, onthinking);
             return true;
@@ -690,6 +711,7 @@
                 level = 20;
             }
             
+            /// Nothing to change.
             if (level === player.engine.level) {
                 return false;
             }
@@ -703,14 +725,6 @@
                 depth = "3";
             } else if (level < 8) {
                 depth = "4";
-            } else if (level < 10) {
-                depth = "5";
-            } else if (level < 12) {
-                depth = "6";
-            } else if (level < 14) {
-                depth = "8";
-            } else if (level < 16) {
-                depth = "10";
             }
             
             player.engine.level = level;
@@ -724,7 +738,7 @@
                 ///NOTE: Stockfish level 20 does not make errors (intentially), so these numbers have no effect on level 20.
                 /// Level 0 starts at 1
                 err_prob = Math.round((level * 6.35) + 1);
-                /// Level 0 starts at 10
+                /// Level 0 starts at 5
                 max_err = Math.round((level * -0.25) + 5);
                 
                 player.engine.err_prob = err_prob;
@@ -732,6 +746,9 @@
                 
                 player.engine.send("setoption name Skill Level Maximum Error value " + max_err);
                 player.engine.send("setoption name Skill Level Probability value " + err_prob);
+                
+                ///NOTE: Could clear the hash to make the player more like it's brand new.
+                /// player.engine.send("setoption name Clear Hash");
             }
         }
         
