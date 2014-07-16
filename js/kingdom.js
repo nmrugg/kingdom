@@ -892,6 +892,9 @@
                 player.set_sd_time();
             } else {
                 player.els.sd_container.style.display = "none";
+                player.time = "";
+                player.start_time = "";
+                clock_manager.clear(player.color);
             }
         }
         
@@ -1117,6 +1120,7 @@
                 w: G.cde("div", {c: "clock clock_white"}),
                 b: G.cde("div", {c: "clock clock_black"}),
             },
+            
             clock_manager = {},
             timer_on;
         
@@ -1218,6 +1222,13 @@
         clock_manager.clock_els = clock_els;
         
         clock_manager.update_clock = update_clock;
+        
+        clock_manager.clear = function clear(color)
+        {
+            if (clock_els[color]) {
+                clock_els[color].textContent = "";
+            }
+        }
         
         return clock_manager;
     }());
