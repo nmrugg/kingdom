@@ -396,6 +396,12 @@
         }
     }
     
+    function pause_game()
+    {
+        board.wait();
+        G.events.trigger("gamePaused");
+    }
+    
     function set_legal_moves(cb)
     {
         get_legal_moves(function onget(moves)
@@ -431,8 +437,7 @@
                             alert("Stalemate!");
                         }
                     }
-                    board.wait();
-                    G.events.trigger("gamePaused");
+                    pause_game();
                 }
             }
         });
@@ -885,16 +890,18 @@
             
             change_selected(player.els.time_type, type);
             
-            player.time_type = type;
-            
-            if (type === "sd") {
-                player.els.sd_container.style.display = "block";
-                player.set_sd_time();
-            } else {
-                player.els.sd_container.style.display = "none";
-                player.time = "";
-                player.start_time = "";
-                clock_manager.clear(player.color);
+            if (player.time_type !== type) {
+                player.time_type = type;
+                
+                if (type === "sd") {
+                    player.els.sd_container.style.display = "block";
+                    player.set_sd_time();
+                } else {
+                    player.els.sd_container.style.display = "none";
+                    player.time = "";
+                    player.start_time = "";
+                    clock_manager.clear(player.color);
+                }
             }
         }
         
@@ -923,7 +930,7 @@
             if (time_val !== player.start_time) {
                 player.time = time_val;
                 player.start_time = time_val;
-                clock_manager.update_clock(player.color)
+                clock_manager.update_clock(player.color);
             }
         }
         
@@ -1054,8 +1061,7 @@
             loading_el.classList.remove("hidden");
         }
         
-        board.wait();
-        G.events.trigger("gamePaused");
+        pause_game();
     }
     
     function init()
@@ -1142,9 +1148,10 @@
                     } else {
                         alert((player.color === "w" ? "White" : "Black") + " loses on time.");
                     }
+                    /// Stop player from moving.
                     stop_game();
-                    board.wait();
-                    G.events.trigger("gamePaused");
+                    /// Disable board play.
+                    pause_game();
                 }
             }
         }
