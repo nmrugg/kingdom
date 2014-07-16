@@ -11,7 +11,8 @@
         player2_el = document.createElement("div"),
         starting_new_game,
         retry_move_timer,
-        clock_manager;
+        clock_manager,
+        pieces_moved;
     
     function array_remove(arr, i, order_irrelevant)
     {
@@ -461,6 +462,8 @@
         set_ai_position();
         
         set_legal_moves(tell_engine_to_move);
+        
+        G.events.trigger("move");
     }
     
     function onthinking(str)
@@ -560,6 +563,8 @@
         
         ///NOTE: We need to get legal moves (even for AI) because we need to know if a move is castling or not.
         set_legal_moves(tell_engine_to_move);
+        
+        G.events.trigger("move");
     }
     
     function all_ready(cb)
@@ -652,6 +657,7 @@
         
         zobrist_keys = [];
         stalemate_by_rules = null;
+        pieces_moved = false;
         
         evaler.send("ucinewgame");
         
@@ -1071,6 +1077,14 @@
         }
     });
     
+    G.events.attach("move", function onmove()
+    {
+        if (!pieces_moved) {
+            G.events.trigger("firstMove");
+            pieces_moved = true;
+        }
+    });
+    
     
     clock_manager = (function make_clocks()
     {
@@ -1099,8 +1113,11 @@
         
         function start_timer()
         {
-            last_time = Date.now();
-            tick_timer = setInterval(tick, 50);
+            /// Don't start the timer if the game has not yet begun.
+            if (board.messy) {
+                last_time = Date.now();
+                tick_timer = setInterval(tick, 50);
+            }
         }
         
         function stop_timer()
@@ -1150,14 +1167,16 @@
         
         board.onswitch = function onswitch()
         {
-            console.log("SWITCH");
-            tick(board.turn === "w" ? "b" : "w");
+            if (last_time) {
+                tick(board.turn === "w" ? "b" : "w");
+            }
         }
         
         board.el.parentNode.insertBefore(clock_els.w, board.el);
         board.el.parentNode.insertBefore(clock_els.b, board.el.nextSibling);
         
         G.events.attach("gameUnpaused", start_timer);
+        G.events.attach("firstMove", start_timer);
         G.events.attach("gamePaused", stop_timer);
         
         clock_manager.clock_els = clock_els;
