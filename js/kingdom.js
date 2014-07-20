@@ -487,10 +487,10 @@
         clock_manager.stop_timer();
         set_legal_moves(function onset()
         {
+            tell_engine_to_move();
             if (board.mode === "play") {
                 clock_manager.start_timer();
             }
-            tell_engine_to_move();
         });
         
         G.events.trigger("move");
@@ -1174,7 +1174,7 @@
             /// Don't start the timer if the game has not yet begun.
             if (board.messy && !timer_on) {
                 last_time = Date.now();
-                tick_timer = setInterval(tick, 50);
+                tick_timer = setInterval(tick, 34);
                 timer_on = true;
             }
         }
