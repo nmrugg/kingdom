@@ -483,6 +483,15 @@
         /// Clear legal moves to indicate that we are between moves. (This is used by the clock manager to determine if it should look call the flag.)
         board.legal_moves = {};
         
+        /// Wait until we set legal moves. It's only fair.
+        clock_manager.stop_timer();
+        set_legal_moves(function onset()
+        {
+            if (board.mode === "play") {
+                clock_manager.start_timer();
+            }
+            tell_engine_to_move();
+        });
         
         G.events.trigger("move");
     }
@@ -1128,7 +1137,6 @@
                 w: G.cde("div", {c: "clock clock_white"}),
                 b: G.cde("div", {c: "clock clock_black"}),
             },
-            
             clock_manager = {},
             timer_on;
         
@@ -1164,7 +1172,7 @@
         function start_timer()
         {
             /// Don't start the timer if the game has not yet begun.
-            if (board.messy) {
+            if (board.messy && !timer_on) {
                 last_time = Date.now();
                 tick_timer = setInterval(tick, 50);
                 timer_on = true;
@@ -1277,6 +1285,9 @@
                 clock_els[color].textContent = "--";
             }
         }
+        
+        clock_manager.start_timer = start_timer;
+        clock_manager.stop_timer = stop_timer;
         
         return clock_manager;
     }());
