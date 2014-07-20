@@ -213,7 +213,7 @@ var BOARD = function board_init(el, options)
     
     function is_piece_moveable(piece)
     {
-        return board.mode === "setup" || (board.mode === "play" && board.legal_moves && board.turn === piece.color && board.players[board.turn].type === "human");
+        return board.mode === "setup" || (board.mode === "play" && board.turn === piece.color && board.players[board.turn].type === "human");
     }
     
     function is_left_click(e)

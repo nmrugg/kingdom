@@ -418,7 +418,7 @@
                     cb();
                 }
             } else {
-                board.legal_moves = [];
+                board.legal_moves = {};
                 if (board.mode === "play") {
                     /// Was it checkmate?
                     //return start_new_game();
@@ -480,7 +480,9 @@
         board.move(move);
         set_ai_position();
         
-        set_legal_moves(tell_engine_to_move);
+        /// Clear legal moves to indicate that we are between moves. (This is used by the clock manager to determine if it should look call the flag.)
+        board.legal_moves = {};
+        
         
         G.events.trigger("move");
     }
@@ -1142,7 +1144,10 @@
             if (player.time_type !== "none") {
                 player.time -= diff;
                 update_clock(player.color);
-                if (player.time < 0) {
+                /// Has someone's time run out?
+                /// Also, make sure that the system has time to check to see if the game has already ended (either by checkmake or stalemate) by checking for legal moves.
+                if (player.time < 0 && (board.legal_moves && board.legal_moves.uci && board.legal_moves.uci.length)) {
+                    /// If the player with time is almost beaten (or the game is almost a stalemate) call it a stalemate.
                     if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
                         alert("Stalemate: Player with time has insufficient material");
                     } else {
