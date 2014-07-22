@@ -938,7 +938,7 @@
             
             time_val = time_from_str(time);
             
-            if (time_val !== player.start_time) {
+            if (time_val && time_val !== player.start_time) {
                 player.time = time_val;
                 player.start_time = time_val;
                 clock_manager.update_clock(player.color);
