@@ -520,6 +520,13 @@
         }
     }
     
+    function use_depth(player)
+    {
+        /// On a timed game, if the player has more than 20 secs per depth, then limit to that depth.
+        /// We don't want to always force an ai to use a depth because it may take too long when time is low.
+        return player.engine.depth && (player.time_type === "none" || (player.time > player.engine.depth * 20000));
+    }
+    
     function tell_engine_to_move()
     {
         ///NOTE: Without time, it thinks really fast. So, we give it a something to make it move reasonably quickly.
@@ -580,7 +587,7 @@
             /// If there's no time limit, limit the depth on some players.
             ///NOTE: There's no reason not to limit depth 1 since it's always fast.
             //if (player.time_type === "none" || Number(player.engine.depth) === 1) {
-            if (player.time_type === "none") {
+            if (use_depth(player)) {
                 depth = player.engine.depth;
             }
             
