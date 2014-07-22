@@ -598,7 +598,6 @@ var BOARD = function board_init(el, options)
     {
         var positions = split_uci(uci),
             piece,
-            captured_piece,
             ending_square;
         
         ending_square = {
