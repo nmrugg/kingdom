@@ -17,7 +17,7 @@
         clock_manager,
         pieces_moved,
         startpos,
-        debugging;
+        debugging = true;
     
     function array_remove(arr, i, order_irrelevant)
     {
