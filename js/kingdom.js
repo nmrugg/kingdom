@@ -1239,6 +1239,10 @@
                 res = hour + ":" + min + ":" + sec;
                 
             } else { /// Days
+                ///NOTE: NaN is always falsey, so it will come here. We check this here so that we don't need to waste time checking eariler.
+                if (isNaN(time)) {
+                    return "Error";
+                }
                 /// Always floor since we don't want to round to 60.
                 sec  = Math.floor((time % 60000) / 1000);
                 hour = Math.floor(time / 60000);
