@@ -512,7 +512,9 @@
     
     function onthinking(str)
     {
-        console.log("thinking: " + str);
+        if (debugging) {
+            console.log("thinking: " + str);
+        }
     }
     
     function set_ai_position()
@@ -720,16 +722,16 @@
         all_flushed(function start_game()
         {
             if (board.mode !== "wait") {
+                starting_new_game = false;
                 return;
             }
             
             if (dont_reset) {
-                ///TODO: Get 
+                ///TEMP: There needs to be a way to set turn, castling, and moves (maybe also a PGN and FEN importer).
                 startpos = board.get_fen() + " w - - 0 0";
                 board.turn = "w";
                 board.set_board(startpos);
                 startpos = "fen " + startpos;
-                console.log(startpos)
             } else {
                 if (board.messy) {
                     board.set_board();
@@ -747,6 +749,7 @@
             set_legal_moves(function onset()
             {
                 if (board.mode !== "wait") {
+                    starting_new_game = false;
                     return;
                 }
                 clock_manager.reset_clocks();
@@ -897,7 +900,7 @@
             return str;
         } else if (typeof str === "string") {
             split = str.split(":");
-            //console.log(split);
+            
             if (split.length === 1) {
                 sec = split[0];
             } else if (split.length === 2) {
