@@ -29,6 +29,10 @@ html, body {
     top: 0;
 }
 
+.center_el {
+    margin: 0 auto;
+}
+
 .left_player {
     left: 0;
 }

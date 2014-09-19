@@ -7,8 +7,9 @@
         stalemate_by_rules,
         evaler,
         loading_el,
-        player1_el = document.createElement("div"),
-        player2_el = document.createElement("div"),
+        player1_el = G.cde("div", {c: "player player_white"}),
+        player2_el = G.cde("div", {c: "player player_black"}),
+        center_el  = G.cde("div", {c: "center_el"}),
         starting_new_game,
         retry_move_timer,
         clock_manager,
@@ -231,7 +232,7 @@
     
     function calculate_board_size(w, h)
     {
-        w = w || window.innerWidth; 
+        w = w || window.innerWidth;
         h = h || window.innerHeight;
         
         if (w > h) {
@@ -260,19 +261,27 @@
             width = board_size;
         }
         
-        el_width = Math.floor((window.innerWidth - width) / 2);
+        el_width = Math.floor((window.innerWidth - width) / 2) - 10;
         
         player1_el.style.width = el_width + "px";
         player2_el.style.width = el_width + "px";
         
-        clock_manager.clock_els.w.style.width = (el_width - 10) + "px";
-        clock_manager.clock_els.b.style.width = (el_width - 10) + "px";
+        clock_manager.clock_els.w.style.width = el_width + "px";
+        clock_manager.clock_els.b.style.width = el_width + "px";
+    }
+    
+    function resize_center()
+    {
+        center_el.style.width = calculate_board_size() + "px";
+        //center_el.style.left = 
+        console.log(board);
     }
     
     function onresize()
     {
         resize_board();
-        resize_players()
+        resize_players();
+        resize_center();
     }
     
     function get_legal_moves(cb)
@@ -1041,11 +1050,6 @@
     
     function create_players()
     {
-        player1_el.classList.add("player");
-        player1_el.classList.add("player_white");
-        player2_el.classList.add("player");
-        player2_el.classList.add("player_black");
-        
         board.players.w.level = 0;
         board.players.b.level = 0;
         
@@ -1060,6 +1064,15 @@
         
         board.players.w.set_time_type("none");
         board.players.b.set_time_type("none");
+    }
+    
+    function create_center()
+    {
+        center_el.appendChild(G.cde("documentFragment", [
+            G.cde("button", {t: "New Game"}, {click: start_new_game}),
+        ]));
+        
+        board.el.parentNode.insertBefore(center_el, null);
     }
     
     function hide_loading()
@@ -1091,6 +1104,8 @@
         show_loading();
         
         create_players();
+        
+        create_center();
         
         board.onmove = onmove;
         
