@@ -732,10 +732,14 @@
                 board.turn = "w";
                 board.set_board(startpos);
                 startpos = "fen " + startpos;
-            } else {
-                if (board.messy) {
-                    board.set_board();
+                ///TODO: Get move count.
+                /*
+                if (move_count > 0) {
+                    board.messy = true;
                 }
+                */
+            } else {
+                board.set_board();
                 startpos = "startpos";
             }
             
