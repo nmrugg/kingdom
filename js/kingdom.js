@@ -663,21 +663,6 @@
         all_ready(cb);
     }
     
-    function reset_clock(color)
-    {
-        var player = board.players[color];
-        if (player.time_type !== "none") {
-            player.time = player.start_time;
-            clock_manager.update_clock(player.color)
-        }
-    }
-    
-    function reset_clocks()
-    {
-        reset_clock("w");
-        reset_clock("b");
-    }
-    
     function stop_game()
     {
         /// Prevent possible future moves.
@@ -686,16 +671,23 @@
         ///TODO: Need a better loading thing for each indivually.
         if (board.players.w.type === "ai") {
             board.players.w.engine.stop_moves();
-            board.players.w.engine.send("ucinewgame");
         }
         if (board.players.b.type === "ai") {
             board.players.b.engine.stop_moves();
-            board.players.b.engine.send("ucinewgame");
         }
+    }
+    
+    function init_setup()
+    {
+        pause_game();
+        board.enable_setup();
+        hide_loading(true);
     }
     
     function start_new_game()
     {
+        show_loading();
+        
         if (starting_new_game) {
             return;
         }
@@ -704,26 +696,38 @@
         
         stop_game();
         
-        show_loading();
-        
-        if (board.messy) {
-            board.set_board();
-        }
-        
-        zobrist_keys = [];
-        stalemate_by_rules = null;
-        pieces_moved = false;
-        
         evaler.send("ucinewgame");
+        
+        if (board.players.w.type === "ai") {
+            board.players.w.engine.send("ucinewgame");
+        }
+        if (board.players.b.type === "ai") {
+            board.players.b.engine.send("ucinewgame");
+        }
         
         all_flushed(function start_game()
         {
+            if (board.mode !== "wait") {
+                return;
+            }
+            
+            if (board.messy) {
+                board.set_board();
+            }
+            
+            zobrist_keys = [];
+            stalemate_by_rules = null;
+            pieces_moved = false;
+            
             set_ai_position();
             //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
             //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
             set_legal_moves(function onset()
             {
-                reset_clocks();
+                if (board.mode !== "wait") {
+                    return;
+                }
+                clock_manager.reset_clocks();
                 starting_new_game = false;
                 hide_loading();
                 tell_engine_to_move();
@@ -1070,16 +1074,19 @@
     {
         center_el.appendChild(G.cde("documentFragment", [
             G.cde("button", {t: "New Game"}, {click: start_new_game}),
+            G.cde("button", {t: "Setup Game"}, {click: init_setup}),
         ]));
         
         board.el.parentNode.insertBefore(center_el, null);
     }
     
-    function hide_loading()
+    function hide_loading(do_not_start)
     {
         loading_el.classList.add("hidden");
-        board.play();
-        G.events.trigger("gameUnpaused");
+        if (!do_not_start) {
+            board.play();
+            G.events.trigger("gameUnpaused");
+        }
     }
     
     function show_loading()
@@ -1129,8 +1136,9 @@
         {
             evaler.send("isready", function onready()
             {
-                console.log("ready");
-                start_new_game();
+                if (board.mode === "wait") {
+                    start_new_game();
+                }
             });
         });
     }
@@ -1285,6 +1293,22 @@
         function update_clock(color)
         {
             clock_els[color].textContent = format_time(board.players[color].time);
+        }
+        
+    
+        function reset_clock(color)
+        {
+            var player = board.players[color];
+            if (player.time_type !== "none") {
+                player.time = player.start_time;
+                clock_manager.update_clock(player.color)
+            }
+        }
+        
+        clock_manager.reset_clocks = function ()
+        {
+            reset_clock("w");
+            reset_clock("b");
         }
         
         board.onswitch = function onswitch()
