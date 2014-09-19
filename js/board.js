@@ -12,6 +12,11 @@ var BOARD = function board_init(el, options)
         squares,
         pos;
     
+    function num_to_alpha(num)
+    {
+        return ["a", "b", "c", "d", "e", "f", "g", "h"][num];
+    }
+    
     function error(str)
     {
         str = str || "Unknown error";
@@ -458,6 +463,13 @@ var BOARD = function board_init(el, options)
         } else if (board.mode === "setup" && captured_piece) {
             /// The pieces should swap places.
             set_piece_pos(captured_piece, piece);
+            
+            if (captured_piece.type === "p" && (captured_piece.rank === 0 || captured_piece.rank === board_details.ranks - 1)) {
+                promotion_prompt(captured_piece, function onres(answer)
+                {
+                    promote_piece(captured_piece, num_to_alpha(square.file) + square.rank + num_to_alpha(piece.file) + piece.rank + answer);
+                });
+            }
         }
         
         /// Make sure to change the rank and file after checking for a capured piece so that you don't capture yourself.
