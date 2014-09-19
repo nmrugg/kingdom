@@ -10,6 +10,8 @@
         player1_el = G.cde("div", {c: "player player_white"}),
         player2_el = G.cde("div", {c: "player player_black"}),
         center_el  = G.cde("div", {c: "center_el"}),
+        new_game_el,
+        setup_game_el,
         starting_new_game,
         retry_move_timer,
         clock_manager,
@@ -684,6 +686,8 @@
     {
         pause_game();
         board.enable_setup();
+        new_game_el.textContent = "Start Game";
+        setup_game_el.disabled = true;
         hide_loading(true);
     }
     
@@ -692,6 +696,9 @@
         var dont_reset = board.mode === "setup";
         
         show_loading();
+        
+        new_game_el.textContent = "New Game";
+        setup_game_el.disabled = false;
         
         if (starting_new_game) {
             return;
@@ -1087,9 +1094,12 @@
     
     function create_center()
     {
+        new_game_el = G.cde("button", {t: "New Game"}, {click: start_new_game});
+        setup_game_el = G.cde("button", {t: "Setup Game"}, {click: init_setup});
+        
         center_el.appendChild(G.cde("documentFragment", [
-            G.cde("button", {t: "New Game"}, {click: start_new_game}),
-            G.cde("button", {t: "Setup Game"}, {click: init_setup}),
+            new_game_el,
+            setup_game_el,
         ]));
         
         board.el.parentNode.insertBefore(center_el, null);
