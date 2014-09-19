@@ -397,6 +397,9 @@ var BOARD = function board_init(el, options)
         
         piece.el.style.left = (square.file * 100) + "%";
         piece.el.style.right = -(square.file * 100) + "%";
+        
+        piece.rank = square.rank;
+        piece.file = square.file;
     }
     
     function get_san(uci)
@@ -427,15 +430,13 @@ var BOARD = function board_init(el, options)
             return false;
         }
         
-        /// Indicate that the board has been changed; it is not in the inital starting position.
-        board.messy = true;
-        
-        set_piece_pos(piece, square);
-        
         ///NOTE: This does not find en passant captures. See below.
         captured_piece = get_piece_from_rank_file(square.rank, square.file);
         
         if (board.mode === "play") {
+            /// Indicate that the board has been changed; it is not in the inital starting position.
+            board.messy = true;
+            
             /// En passant
             if (!captured_piece && piece.type === "p" && piece.file !== square.file && ((piece.color === "w" && square.rank === board_details.ranks - 3) || (piece.color === "b" && square.rank === 2))) {
                 captured_piece = get_piece_from_rank_file(piece.rank, square.file);
@@ -450,17 +451,17 @@ var BOARD = function board_init(el, options)
             if (san === "O-O") { /// Kingside castle
                 rook = get_piece_from_rank_file(rook_rank, 7);
                 set_piece_pos(rook, {rank: rook_rank, file: 5});
-                rook.file = 5;
             } else if (san === "O-O-O") { /// Queenside castle
                 rook = get_piece_from_rank_file(rook_rank, 0);
                 set_piece_pos(rook, {rank: rook_rank, file: 3});
-                rook.file = 3;
             }
+        } else if (board.mode === "setup" && captured_piece) {
+            /// The pieces should swap places.
+            set_piece_pos(captured_piece, piece);
         }
         
         /// Make sure to change the rank and file after checking for a capured piece so that you don't capture yourself.
-        piece.rank = square.rank;
-        piece.file = square.file;
+        set_piece_pos(piece, square);
     }
     
     function is_promoting(piece, square)
@@ -470,6 +471,24 @@ var BOARD = function board_init(el, options)
         }
         
         return piece.type === "p" && square.rank % (board_details.ranks - 1) === 0;
+    }
+    
+    function remove_piece(piece)
+    {
+        var i;
+        
+        for (i = board.pieces.length - 1; i >= 0; i -= 1) {
+            if (piece.id === board.pieces[i].id) {
+                G.array_remove(board.pieces, i);
+                /// Make it fade out.
+                piece.el.classList.add("captured");
+                setTimeout(function ()
+                {
+                    piece.el.parentNode.removeChild(piece.el);
+                }, 2000);
+                return;
+            }
+        }
     }
     
     function onmouseup(e)
@@ -500,10 +519,19 @@ var BOARD = function board_init(el, options)
             } else {
                 /// Snap back.
                 ///TODO: Be able to remove pieces in setup mode.
+                if (board.mode === "setup") {
+                    remove_piece(board.dragging.piece);
+                    /// We need to remove "dragging" to make the transitions work again.
+                    board.dragging.piece.el.classList.remove("dragging");
+                    delete board.dragging.piece;
+                }
             }
             
-            prefix_css(board.dragging.piece.el, "transform", "none");
-            board.dragging.piece.el.classList.remove("dragging");
+            /// If it wasn't deleted
+            if (board.dragging.piece) {
+                prefix_css(board.dragging.piece.el, "transform", "none");
+                board.dragging.piece.el.classList.remove("dragging");
+            }
             board.el.classList.remove("dragging");
             
             delete board.dragging;
