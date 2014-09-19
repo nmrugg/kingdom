@@ -452,10 +452,9 @@ var BOARD = function board_init(el, options)
             }
             
             /// Is it castling?
-            ///TODO: Use board_details.files
             if (san === "O-O") { /// Kingside castle
-                rook = get_piece_from_rank_file(rook_rank, 7);
-                set_piece_pos(rook, {rank: rook_rank, file: 5});
+                rook = get_piece_from_rank_file(rook_rank, board_details.files - 1);
+                set_piece_pos(rook, {rank: rook_rank, file: board_details.files - 3});
             } else if (san === "O-O-O") { /// Queenside castle
                 rook = get_piece_from_rank_file(rook_rank, 0);
                 set_piece_pos(rook, {rank: rook_rank, file: 3});
