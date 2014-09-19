@@ -13,7 +13,9 @@
         starting_new_game,
         retry_move_timer,
         clock_manager,
-        pieces_moved;
+        pieces_moved,
+        startpos,
+        debugging;
     
     function array_remove(arr, i, order_irrelevant)
     {
@@ -192,8 +194,9 @@
                 return;
             }
             
-            /// Debugging
-            console.log(cmd);
+            if (debugging) {
+                console.log(cmd);
+            }
             
             /// Only add a que for commands that always print.
             ///NOTE: setoption may or may not print a statement.
@@ -213,7 +216,9 @@
                 len = que.length;
             
             for (i = 0; i < len; i += 1) {
-                console.log(i, get_first_word(que[i].cmd))
+                if (debugging) {
+                    console.log(i, get_first_word(que[i].cmd))
+                }
                 /// We found a move than has not been stopped yet.
                 if (get_first_word(que[i].cmd) === "go" && !que[i].discard) {
                     engine.send("stop");
@@ -273,8 +278,6 @@
     function resize_center()
     {
         center_el.style.width = calculate_board_size() + "px";
-        //center_el.style.left = 
-        console.log(board);
     }
     
     function onresize()
@@ -512,7 +515,7 @@
     
     function set_ai_position()
     {
-        var cmd = "position startpos";
+        var cmd = "position " + startpos;
         
         if (board.moves && board.moves.length) {
             cmd += " moves " + board.moves.join(" ");
@@ -686,6 +689,8 @@
     
     function start_new_game()
     {
+        var dont_reset = board.mode === "setup";
+        
         show_loading();
         
         if (starting_new_game) {
@@ -711,8 +716,18 @@
                 return;
             }
             
-            if (board.messy) {
-                board.set_board();
+            if (dont_reset) {
+                ///TODO: Get 
+                startpos = board.get_fen() + " w - - 0 0";
+                board.turn = "w";
+                board.set_board(startpos);
+                startpos = "fen " + startpos;
+                console.log(startpos)
+            } else {
+                if (board.messy) {
+                    board.set_board();
+                }
+                startpos = "startpos";
             }
             
             zobrist_keys = [];
@@ -1126,7 +1141,9 @@
                 player1_el.textContent = line;
             }
             */
-            console.log(line);
+            if (debugging) {
+                console.log(line);
+            }
         }
         
         //board.players.b.type = "human";
@@ -1237,7 +1254,6 @@
                 /// Always floor since we don't want to round to 60.
                 res = "0:" + Math.floor(time / 1000);
             } else if (time < 3600000) { /// Less than 1 hour
-                //debugger;
                 /// Always floor since we don't want to round to 60.
                 sec = Math.floor((time % 60000) / 1000);
                 min = Math.floor(time / 60000);

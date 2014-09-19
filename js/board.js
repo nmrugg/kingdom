@@ -159,14 +159,13 @@ var BOARD = function board_init(el, options)
         return board;
     }
     
-    function load_pieces_from_start()
+    function load_pieces_from_start(fen)
     {
-        var fen_pieces = pos.match(/^\S+/),
+        var fen_pieces = fen.match(/^\S+/),
             rank = 7,
             file = 0,
             id = 0;
         
-        ///TODO: Delete old pieces.
         if (board.pieces) {
             board.pieces.forEach(function oneach(piece)
             {
@@ -516,9 +515,11 @@ var BOARD = function board_init(el, options)
         return "url(\"" + encodeURI("img/pieces/" + board.theme + "/" + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
     }
     
-    function set_board()
+    function set_board(fen)
     {
-        load_pieces_from_start();
+        fen = fen || get_init_pos();
+        
+        load_pieces_from_start(fen);
         
         board.pieces.forEach(function oneach(piece)
         {
@@ -638,6 +639,53 @@ var BOARD = function board_init(el, options)
         track_move(uci);
     }
     
+    function get_fen(full)
+    {
+        var ranks = [],
+            i,
+            j,
+            fen = "";
+        
+        board.pieces.forEach(function (piece)
+        {
+            if (!piece.captured) {
+                if (!ranks[piece.rank]) {
+                    ranks[piece.rank] = [];
+                }
+                ranks[piece.rank][piece.file] = piece.type;
+                if (piece.color === "w") {
+                    ranks[piece.rank][piece.file] = ranks[piece.rank][piece.file].toUpperCase();
+                }
+            }
+        });
+        
+        /// Start with the last rank.
+        for (i = board_details.ranks - 1; i >= 0; i -= 1) {
+            if (ranks[i]) {
+                for (j = 0; j < board_details.files; j += 1) {
+                    if (ranks[i][j]) {
+                        fen += ranks[i][j];
+                    } else {
+                        fen += "1";
+                    }
+                }
+            } else {
+                fen += "8";
+            }
+            if (i > 0) {
+                fen += "/";
+            }
+        }
+        
+        /// Replace 1's with their number (e.g., 11 with 2).
+        fen = fen.replace(/1{2,}/g, function replacer(ones)
+        {
+            return String(ones.length);
+        });
+        
+        return fen;
+    }
+    
     board = {
         pieces: [],
         size_board: size_board,
@@ -658,7 +706,8 @@ var BOARD = function board_init(el, options)
         switch_turn: switch_turn,
         set_board: set_board,
         is_legal_move: is_legal_move,
-        moves: []
+        moves: [],
+        get_fen: get_fen,
     /// legal_move[]
     /// onmove()
     /// onswitch()
@@ -666,13 +715,9 @@ var BOARD = function board_init(el, options)
     
     options = options || {};
     
-    if (!options.pos) {
-        pos = get_init_pos();
-    }
-    
     create_board(el, options.dim);
     
-    set_board();
+    set_board(options.pos);
     
     window.addEventListener("mousemove", onmousemove);
     window.addEventListener("mouseup", onmouseup);
