@@ -333,7 +333,6 @@
             }
             
             cb(res);
-            
         });
     }
     
@@ -694,6 +693,64 @@
         G.events.trigger("initSetup");
     }
     
+    function check_startpos(cb)
+    {
+        var temp_pos;
+        
+        function return_val(is_valid)
+        {
+            setTimeout(function ()
+            {
+                cb(is_valid);
+            }, 0);
+        }
+        
+        if (startpos === "startpos") {
+            return return_val(true);
+        }
+        
+        ///TODO: Check for one king each.
+        if (!/^\s*fen\s+[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*/i.test(startpos)) {
+            return return_val(false);
+        }
+        
+        /// Set it to an invalid one first, so that when we set it to a valid one, it should change.
+        evaler.send("position fen 8/8/8/8/8/8/8/8 b - - 0 1");
+        evaler.send("position " + startpos);
+        
+        get_legal_moves(function onget(data)
+        {
+            var wkings = 0,
+                bkings = 0;
+            
+            if (!data.uci.length) {
+                /// The starting side needs a valid move.
+                return return_val(false);
+            }
+            
+            data.fen.placement.replace(/k/gi, function counter(char)
+            {
+                if (char === "k") {
+                    bkings += 1;
+                } else {
+                    wkings += 1;
+                }
+            });
+            
+            if (bkings !== 1 || wkings !== 1) {
+                /// Both sides need exactly one king.
+                return return_val(false);
+            }
+            
+            evaler.send("position fen " + data.fen.placement + " " + (data.fen.turn === "w" ? "b" : "w"));
+            get_legal_moves(function onget(data)
+            {
+                /// There must not be anyone already checking the opponent's king.
+                return return_val(!data.checkers.length);
+            });
+        });
+    }
+    
     function start_new_game()
     {
         var dont_reset = board.mode === "setup",
@@ -736,7 +793,7 @@
             
             if (dont_reset) {
                 ///TEMP: There needs to be a way to set turn, castling, and moves (maybe also a PGN and FEN importer).
-                startpos = board.get_fen() + " w - - 0 0";
+                startpos = board.get_fen() + " w - - 0 1";
                 board.turn = "w";
                 board.set_board(startpos);
                 startpos = "fen " + startpos;
@@ -751,24 +808,33 @@
                 startpos = "startpos";
             }
             
-            zobrist_keys = [];
-            stalemate_by_rules = null;
-            pieces_moved = false;
-            
-            set_ai_position();
-            //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
-            //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
-            set_legal_moves(function onset()
+            check_startpos(function oncheck(is_valid)
             {
-                if (stop_new_game) {
+                if (!is_valid) {
                     starting_new_game = false;
+                    alert("Position is invalid");
                     return;
                 }
-                clock_manager.reset_clocks();
-                starting_new_game = false;
-                hide_loading();
-                tell_engine_to_move();
-                G.events.trigger("newGameBegins");
+                
+                zobrist_keys = [];
+                stalemate_by_rules = null;
+                pieces_moved = false;
+                
+                set_ai_position();
+                //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
+                //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
+                set_legal_moves(function onset()
+                {
+                    if (stop_new_game) {
+                        starting_new_game = false;
+                        return;
+                    }
+                    clock_manager.reset_clocks();
+                    starting_new_game = false;
+                    hide_loading();
+                    tell_engine_to_move();
+                    G.events.trigger("newGameBegins");
+                });
             });
         });
     }
