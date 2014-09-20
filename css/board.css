@@ -15,6 +15,11 @@
               user-select: none;
 }
 
+.mobile .chess_board {
+    -webkit-transition: none;
+            transition: none;
+}
+
 .chess_board .rank {
     display: table-row;
 }
@@ -74,6 +79,11 @@
             transition: all 200ms;
 }
 
+.mobile .piece {
+    -webkit-transition: none;
+            transition: none;
+}
+
 .chess_board.waiting .piece {
     cursor: default!important;
 }
@@ -94,6 +104,7 @@
     -webkit-transition: none!important;
             transition: none!important;
 }
+
 
 .chess_board.waiting {
     opacity: .5;
@@ -141,6 +152,11 @@
     opacity: .7;
     -webkit-transition: opacity 200ms;
             transition: opacity 200ms;
+}
+
+.mobile .promotion_icon {
+    -webkit-transition: none;
+            transition: none;
 }
 
 .promotion_icon:hover {

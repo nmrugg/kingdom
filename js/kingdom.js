@@ -1356,6 +1356,12 @@
         
         function start_timer()
         {
+            var speed = 34;
+            
+            if (G.mobile) {
+                speed = 234;
+            }
+            
             /// Don't start the timer if the game has not yet begun.
             if (board.messy && !timer_on) {
                 last_time = Date.now();

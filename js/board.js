@@ -14,7 +14,7 @@ var BOARD = function board_init(el, options)
     
     function num_to_alpha(num)
     {
-        return ["a", "b", "c", "d", "e", "f", "g", "h"][num];
+        return "abcdefgh"[num];
     }
     
     function error(str)
@@ -225,12 +225,21 @@ var BOARD = function board_init(el, options)
         return (e.which || (e || window.event).button) === 1;
     }
     
+    function fix_touch_event(e)
+    {
+        if (e.changedTouches && e.changedTouches[0]) {
+            e.clientX = e.changedTouches[0].pageX;
+            e.clientY = e.changedTouches[0].pageY;
+        }
+    }
+    
     function add_piece_events(piece)
     {
-        piece.el.addEventListener("mousedown", function onpiece_mouse_down(e)
+        function onpiece_mouse_down(e)
         {
             ///TODO: Test and make sure it works on touch devices.
-            if (is_left_click(e) && is_piece_moveable(piece)) {
+            if ((e.type === "touchstart" || is_left_click(e)) && is_piece_moveable(piece)) {
+                fix_touch_event(e);
                 board.dragging = {};
                 board.dragging.piece = piece;
                 board.dragging.origin = {x: e.clientX, y: e.clientY};
@@ -243,7 +252,11 @@ var BOARD = function board_init(el, options)
                 /// Prevent the cursor from becoming an I beam.
                 e.preventDefault();
             }
-        });
+        }
+    
+        piece.el.addEventListener("mousedown", onpiece_mouse_down);
+        
+        piece.el.addEventListener("touchstart", onpiece_mouse_down);
     }
     
     function prefix_css(el, prop, value)
@@ -258,12 +271,14 @@ var BOARD = function board_init(el, options)
     function onmousemove(e)
     {
         if (board.dragging && board.dragging.piece) {
+            fix_touch_event(e);
             prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)")
         }
     }
     
     function get_hovering_square(e)
     {
+        fix_touch_event(e);
         var el,
             match,
             square = {},
@@ -759,7 +774,9 @@ var BOARD = function board_init(el, options)
     set_board(options.pos);
     
     window.addEventListener("mousemove", onmousemove);
-    window.addEventListener("mouseup", onmouseup);
+    window.addEventListener("touchmove", onmousemove);
+    window.addEventListener("mouseup",  onmouseup);
+    window.addEventListener("touchend", onmouseup);
     
     return board;
 };
