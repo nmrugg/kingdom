@@ -710,6 +710,7 @@
         
         starting_new_game = true;
         
+        /// Stop loading a new game if the user clicks on setup.
         G.events.attach("initSetup", function ()
         {
             stop_new_game = true;
@@ -767,6 +768,7 @@
                 starting_new_game = false;
                 hide_loading();
                 tell_engine_to_move();
+                G.events.trigger("newGameBegins");
             });
         });
     }
@@ -784,10 +786,17 @@
         }
     }
     
+    function get_other_player(player)
+    {
+        return board.players[player.color === "w" ? "b" : "w"];
+    }
+    
     function make_type_change(player)
     {
         function set_type(type)
         {
+            var other_player;
+            
             if (type === "human" || type === "ai") {
                 change_selected(player.els.type, type);
                 
@@ -795,13 +804,19 @@
                     player.type = type;
                     if (player.type === "ai") {
                         if (!player.engine) {
-                            player.engine = load_engine();
-                            ///NOTE: This shows that it's loaded so that we know that it can move.
-                            player.engine.send("uci", function onload()
-                            {
-                                /// Make sure it's all ready too.
-                                player.engine.send("isready");
-                            }); 
+                            other_player = get_other_player(player);
+                            if (other_player.type === "human" && other_player.engine) {
+                                player.engine = other_player.engine;
+                                delete other_player.engine;
+                            } else {
+                                player.engine = load_engine();
+                                ///NOTE: This shows that it's loaded so that we know that it can move.
+                                player.engine.send("uci", function onload()
+                                {
+                                    /// Make sure it's all ready too.
+                                    player.engine.send("isready");
+                                });
+                            }
                         }
                         
                         /// Set the AI level if not already.
