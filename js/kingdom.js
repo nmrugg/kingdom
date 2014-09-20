@@ -796,6 +796,7 @@
         function set_type(type)
         {
             var other_player,
+                this_engine,
                 tmp_engine;
             
             if (type === "human" || type === "ai") {
@@ -811,11 +812,14 @@
                                 delete other_player.engine;
                             } else {
                                 player.engine = load_engine();
+                                /// Keep the correct engine, even if it gets switched.
+                                this_engine = player.engine;
                                 ///NOTE: This shows that it's loaded so that we know that it can move.
                                 player.engine.send("uci", function onload()
                                 {
                                     /// Make sure it's all ready too.
-                                    player.engine.send("isready");
+                                    ///NOTE: We need to link directly to the engine because it could get switched while loading.
+                                    this_engine.send("isready");
                                 });
                             }
                         }
@@ -837,13 +841,14 @@
                         
                         /// Do we have an engine we don't need now and the other player needs one?
                         if (player.engine && other_player.type === "ai" && !other_player.engine.ready && player.engine.started < other_player.engine.started) {
+                            /// Switch engines.
                             tmp_engine = player.engine;
                             player.engine = other_player.engine;
                             other_player.engine = tmp_engine;
                             
+                            /// Reset levels.
                             player.set_level(player.level);
                             other_player.set_level(other_player.level);
-                            console.log("switching");
                         }
                     }
                 }
