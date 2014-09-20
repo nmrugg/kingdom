@@ -67,7 +67,7 @@
     function load_engine()
     {
         var worker = new Worker("js/stockfish.js"),
-            engine = {},
+            engine = {started: Date.now()},
             que = [];
         
         function get_first_word(line)
@@ -795,7 +795,8 @@
     {
         function set_type(type)
         {
-            var other_player;
+            var other_player,
+                tmp_engine;
             
             if (type === "human" || type === "ai") {
                 change_selected(player.els.type, type);
@@ -827,11 +828,23 @@
                             tell_engine_to_move();
                         }
                         player.els.level.style.display = "inline";
-                    } else {
+                    } else { /// Human
                         if (player.engine) {
                             player.engine.stop_moves();
                         }
                         player.els.level.style.display = "none";
+                        other_player = get_other_player(player);
+                        
+                        /// Do we have an engine we don't need now and the other player needs one?
+                        if (player.engine && other_player.type === "ai" && !other_player.engine.ready && player.engine.started < other_player.engine.started) {
+                            tmp_engine = player.engine;
+                            player.engine = other_player.engine;
+                            other_player.engine = tmp_engine;
+                            
+                            player.set_level(player.level);
+                            other_player.set_level(other_player.level);
+                            console.log("switching");
+                        }
                     }
                 }
             }
