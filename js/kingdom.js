@@ -695,6 +695,19 @@
     
     function check_startpos(cb)
     {
+        /// The default position is always right.
+        if (startpos === "startpos") {
+            return setTimeout(function ()
+            {
+                cb(true);
+            }, 0);
+        }
+        
+        check_fen(startpos, cb);
+    }
+    
+    function check_fen(fen, cb)
+    {
         var temp_pos;
         
         function return_val(is_valid)
@@ -705,16 +718,13 @@
             }, 0);
         }
         
-        if (startpos === "startpos") {
-            return return_val(true);
-        }
-        
-        ///TODO: Check for one king each.
+        /// A simple check to see if the FEN makes sense.
         if (!/^\s*fen\s+[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*/i.test(startpos)) {
             return return_val(false);
         }
         
-        /// Set it to an invalid one first, so that when we set it to a valid one, it should change.
+        /// Set it to an invalid one first, so that when we set it to a valid one, it should change; otherwise it will remain invalid.
+        ///NOTE: Stockfish just completely ignores invalid FEN's. It also allows for lots of omissions.
         evaler.send("position fen 8/8/8/8/8/8/8/8 b - - 0 1");
         evaler.send("position " + startpos);
         
@@ -728,6 +738,7 @@
                 return return_val(false);
             }
             
+            /// Count kings.
             data.fen.placement.replace(/k/gi, function counter(char)
             {
                 if (char === "k") {
