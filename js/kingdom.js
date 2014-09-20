@@ -798,8 +798,7 @@
         all_flushed(function start_game()
         {
             if (stop_new_game) {
-                starting_new_game = false;
-                return;
+                return starting_new_game = false;
             }
             
             if (dont_reset) {
@@ -821,8 +820,14 @@
             
             check_startpos(function oncheck(is_valid)
             {
+                if (stop_new_game) {
+                    return starting_new_game = false;
+                }
+                
                 if (!is_valid) {
                     starting_new_game = false;
+                    pause_game();
+                    hide_loading(true);
                     alert("Position is invalid");
                     return;
                 }
@@ -837,8 +842,7 @@
                 set_legal_moves(function onset()
                 {
                     if (stop_new_game) {
-                        starting_new_game = false;
-                        return;
+                        return starting_new_game = false;
                     }
                     clock_manager.reset_clocks();
                     starting_new_game = false;
