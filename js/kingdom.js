@@ -1257,6 +1257,10 @@
     
     function init()
     {
+        if (typeof Worker === "undefined") {
+            return alert("Sorry, Kingdom does not support this browser.");
+        }
+        
         onresize();
         
         window.addEventListener("resize", onresize);
