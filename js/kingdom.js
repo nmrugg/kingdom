@@ -1171,7 +1171,7 @@
             G.cde("option", {t: "Sudden Death", value: "sd", selected: player.time.type === "sd"}),
         ]);
         
-        var sd_el = G.cde("input", {type: "text", value: player.time.sd || "5:00"}, {all_on_changes: make_set_sd_time(player)});
+        var sd_el = G.cde("input", {type: "text", value: player.time.sd || "15:00"}, {all_on_changes: make_set_sd_time(player)});
         
         sd_container.appendChild(G.cde("", [
             "Time: ",
@@ -1204,8 +1204,8 @@
     
     function create_players()
     {
-        board.players.w.level = 0;
-        board.players.b.level = 0;
+        board.players.w.level = 20;
+        board.players.b.level = 20;
         
         add_player_els(player1_el, board.players.w);
         add_player_els(player2_el, board.players.b);
