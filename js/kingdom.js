@@ -1380,7 +1380,7 @@
             timer_on = false;
         }
         
-        function format_time(time)
+        function format_time(time, allow_neg)
         {
             var sign = "",
                 res,
@@ -1392,7 +1392,11 @@
             time = parseFloat(time);
             
             if (time < 0) {
-                sign = "-"
+                if (allow_neg) {
+                    sign = "-";
+                } else {
+                    time = 0;
+                }
             }
             time = Math.abs(time);
             
