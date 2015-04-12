@@ -66,7 +66,7 @@
     
     function load_engine()
     {
-        var worker = new Worker("js/stockfish.js"),
+        var worker = new Worker("js/stockfish6.js"),
             engine = {started: Date.now()},
             que = [];
         
