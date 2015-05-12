@@ -71,10 +71,10 @@ var BOARD = function board_init(el, options)
     
     function size_board(w, h)
     {
-        board_details.width = parseFloat(w);
+        board_details.width  = parseFloat(w);
         board_details.height = parseFloat(h);
         
-        board.el.style.width  = board_details.width + "px";
+        board.el.style.width  = board_details.width  + "px";
         board.el.style.height = board_details.height + "px";
     }
     
