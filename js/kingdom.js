@@ -10,6 +10,7 @@
         player1_el = G.cde("div", {c: "player player_white"}),
         player2_el = G.cde("div", {c: "player player_black"}),
         center_el  = G.cde("div", {c: "center_el"}),
+        rating_slider,
         new_game_el,
         setup_game_el,
         starting_new_game,
@@ -17,44 +18,11 @@
         clock_manager,
         pieces_moved,
         startpos,
-        debugging = true;
-    
-    function array_remove(arr, i, order_irrelevant)
-    {
-        var len = arr.length;
-        
-        /// Handle negative numbers.
-        if (i < 0) {
-            i = len + i;
-        }
-        
-        /// If the last element is to be removed, then all we need to do is pop it off.
-        ///NOTE: This is always the fastest method and it is orderly too.
-        if (i === len - 1) {
-            arr.pop();
-        /// If the second to last element is to be removed, we can just pop off the last one and replace the second to last one with it.
-        ///NOTE: This is always the fastest method and it is orderly too.
-        } else if (i === len - 2) {
-            arr[len - 2] = arr.pop();
-        /// Can use we the faster (but unorderly) remove method?
-        } else if (order_irrelevant || i === len - 2) {
-            if (i >= 0 && i < len) {
-                /// This works by popping off the last array element and using that to replace the element to be removed.
-                arr[i] = arr.pop();
-            }
-        } else {
-            /// The first element can be quickly shifted off.
-            if (i === 0) {
-                arr.shift();
-            /// Ignore numbers that are still negative.
-            ///NOTE: By default, if a number is below the total array count (e.g., array_remove([0,1], -3)), splice() will remove the first element.
-            ///      This behavior is undesirable because it is unexpected.
-            } else if (i > 0) {
-                /// Use the orderly, but slower, splice method.
-                arr.splice(i, 1);
-            }
-        }
-    }
+        debugging = false,
+        legal_move_engine,
+        cur_pos_cmd,
+        game_history,
+        eval_depth = 6;
     
     function error(str)
     {
@@ -183,7 +151,7 @@
                 }
                 
                 /// Remove this from the que.
-                array_remove(que, que_num);
+                G.array_remove(que, que_num);
             }
         };
         
@@ -192,6 +160,7 @@
             cmd = String(cmd).trim();
             
             /// Can't quit. This is a browser.
+            ///TODO: Destroy the engine.
             if (cmd === "quit") {
                 return;
             }
@@ -221,7 +190,7 @@
                 if (debugging) {
                     console.log(i, get_first_word(que[i].cmd))
                 }
-                /// We found a move than has not been stopped yet.
+                /// We found a move that has not been stopped yet.
                 if (get_first_word(que[i].cmd) === "go" && !que[i].discard) {
                     engine.send("stop");
                     que[i].discard = true;
@@ -289,9 +258,12 @@
         resize_center();
     }
     
-    function get_legal_moves(cb)
+    function get_legal_moves(pos, cb)
     {
-        evaler.send("d", function ond(str)
+        if (pos) {
+            legal_move_engine.send(pos);
+        }
+        legal_move_engine.send("d", function ond(str)
         {
             var san = str.match(/Legal moves\:(.*)/),
                 uci = str.match(/Legal uci moves\:(.*)/),
@@ -417,13 +389,13 @@
     
     function set_legal_moves(cb)
     {
-        get_legal_moves(function onget(moves)
+        get_legal_moves(cur_pos_cmd, function onget(moves)
         {
             zobrist_keys.push(moves.key);
             
             stalemate_by_rules = is_stalemate_by_rule(moves.fen);
-            /// Is the game still on?
             
+            /// Is the game still on?
             ///TODO: Only AI should automatically claim 50 move rule. (And probably not the lower levels).
             if (moves.uci.length && !stalemate_by_rules) {
                 board.legal_moves = moves;
@@ -434,7 +406,6 @@
                 board.legal_moves = {};
                 if (board.mode === "play") {
                     /// Was it checkmate?
-                    //return start_new_game();
                     if (moves.checkers.length && !stalemate_by_rules) {
                         alert((board.turn === "b" ? "Black" : "White") + " is checkmated!");
                     } else {
@@ -456,12 +427,85 @@
         });
     }
     
+    function prep_eval(pos, ply)
+    {
+        game_history[ply].pos = pos;
+        
+        setTimeout(eval_next, 0);
+    }
+    
+    function eval_next()
+    {
+        var i,
+            len = game_history.length;
+        
+        for (i = 0; i < len; i += 1) {
+            if (!game_history[i].evaled) {
+                return eval_pos(i);
+            }
+        }
+    }
+    
+    G.events.attach("evaled", eval_next);
+    
+    function eval_pos(ply)
+    {
+        if (evaler.busy) {
+            return;
+        }
+        
+        evaler.busy = true;
+        
+        evaler.send(game_history[ply].pos);
+        
+        evaler.send("go depth " + eval_depth, function ongo(str)
+        {
+            var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+            
+            if (matches) {
+                game_history[ply].eval_best_move = matches[1];
+                game_history[ply].eval_ponder = matches[2];
+            }
+            
+            game_history[ply].evaled = true;
+            evaler.busy = false;
+            G.events.trigger("evaled", {ply: ply});
+            console.log(game_history)
+        }, function stream(str)
+        {
+            var matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+) .*pv (.+)/),
+                score,
+                type,
+                depth,
+                pv;
+            console.log(str)
+            if (matches) {
+                depth = Number(matches[1]);
+                type = matches[2];
+                score = Number(matches[3]);
+                pv = matches[4].split(" ");
+                
+                if (game_history[ply].turn === "b") {
+                    score *= -1;
+                }
+                console.log(ply)
+                game_history[ply].eval_score = score;
+                game_history[ply].eval_type = type;
+                game_history[ply].eval_depth = depth;
+                game_history[ply].eval_pv = pv;
+                
+                G.events.trigger("eval", {ply: ply, score: score, type: type, depth: depth, pv: pv});
+            }
+        });
+    }
+    
     function onengine_move(str)
     {
         var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/),
             player = board.players[board.turn],
             move,
-            ponder;
+            ponder,
+            pos;
         
         if (board.mode !== "play") {
             return;
@@ -491,7 +535,7 @@
         player.engine.ponder_move = ponder;
         
         board.move(move);
-        set_ai_position();
+        set_cur_pos_cmd();
         
         /// Clear legal moves to indicate that we are between moves. (This is used by the clock manager to determine if it should look call the flag.)
         board.legal_moves = {};
@@ -506,7 +550,7 @@
             }
         });
         
-        G.events.trigger("move");
+        G.events.trigger("move", {move: move, ponder: ponder});
     }
     
     function onthinking(str)
@@ -516,23 +560,17 @@
         }
     }
     
-    function set_ai_position()
+    function set_cur_pos_cmd()
     {
-        var cmd = "position " + startpos;
+        var cmd = "position " + startpos,
+            ply = 0;
         
         if (board.moves && board.moves.length) {
+            ply = board.moves.length;
             cmd += " moves " + board.moves.join(" ");
         }
         
-        if (evaler) {
-            evaler.send(cmd);
-        }
-        if (board.players.w.type === "ai") {
-            board.players.w.engine.send(cmd)
-        }
-        if (board.players.b.type === "ai") {
-            board.players.b.engine.send(cmd)
-        }
+        cur_pos_cmd = cmd;
     }
     
     function use_depth(player)
@@ -607,20 +645,20 @@
             }
             
             //depth = 1;
-            
+            player.engine.send(cur_pos_cmd);
             player.engine.send("go " + (typeof depth !== "undefined" ? "depth " + depth : "") + " wtime " + wtime + " btime " + btime , onengine_move, onthinking);
             return true;
         }
     }
     
-    function onmove(move)
+    function on_human_move(move)
     {
-        set_ai_position();
+        set_cur_pos_cmd();
         
         ///NOTE: We need to get legal moves (even for AI) because we need to know if a move is castling or not.
         set_legal_moves(tell_engine_to_move);
         
-        G.events.trigger("move");
+        G.events.trigger("move", {move: move});
     }
     
     function all_ready(cb)
@@ -655,6 +693,10 @@
         }
         
         if (evaler.get_cue_len()) {
+            return wait();
+        }
+        
+        if (legal_move_engine && legal_move_engine.get_cue_len()) {
             return wait();
         }
         
@@ -725,10 +767,8 @@
         
         /// Set it to an invalid one first, so that when we set it to a valid one, it should change; otherwise it will remain invalid.
         ///NOTE: Stockfish just completely ignores invalid FEN's. It also allows for lots of omissions.
-        evaler.send("position fen 8/8/8/8/8/8/8/8 b - - 0 1");
-        evaler.send("position " + startpos);
-        
-        get_legal_moves(function onget(data)
+        legal_move_engine.send("position fen 8/8/8/8/8/8/8/8 b - - 0 1");
+        get_legal_moves("position " + startpos, function onget(data)
         {
             var wkings = 0,
                 bkings = 0;
@@ -753,13 +793,26 @@
                 return return_val(false);
             }
             
-            evaler.send("position fen " + data.fen.placement + " " + (data.fen.turn === "w" ? "b" : "w"));
-            get_legal_moves(function onget(data)
+            get_legal_moves("position fen " + data.fen.placement + " " + (data.fen.turn === "w" ? "b" : "w"), function onget(data)
             {
                 /// There must not be anyone already checking the opponent's king.
                 return return_val(!data.checkers.length);
             });
         });
+    }
+    
+    function get_legal_move_engine()
+    {
+        if (!legal_move_engine) {
+            if (board.players.b.engine) {
+                legal_move_engine = board.players.b.engine;
+            } else if (board.players.w.engine) {
+                legal_move_engine = board.players.w.engine;
+            } else {
+                board.players.b.engine = load_engine();
+                legal_move_engine = board.players.b.engine;
+            }
+        }
     }
     
     function start_new_game()
@@ -794,6 +847,8 @@
         if (board.players.b.type === "ai") {
             board.players.b.engine.send("ucinewgame");
         }
+        
+        get_legal_move_engine();
         
         all_flushed(function start_game()
         {
@@ -836,7 +891,7 @@
                 stalemate_by_rules = null;
                 pieces_moved = false;
                 
-                set_ai_position();
+                set_cur_pos_cmd();
                 //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
                 //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
                 set_legal_moves(function onset()
@@ -844,6 +899,10 @@
                     if (stop_new_game) {
                         return starting_new_game = false;
                     }
+                    
+                    game_history = [{turn: board.turn, pos: startpos}];
+                    prep_eval(startpos, 0);
+                    
                     clock_manager.reset_clocks();
                     starting_new_game = false;
                     hide_loading();
@@ -909,7 +968,7 @@
                         player.set_level(player.level);
                         
                         if (board.mode === "play") {
-                            set_ai_position();
+                            set_cur_pos_cmd();
                             tell_engine_to_move();
                         }
                         player.els.level.style.display = "inline";
@@ -1271,7 +1330,7 @@
         
         create_center();
         
-        board.onmove = onmove;
+        board.onmove = on_human_move;
         
         //engine = load_engine();
         evaler = load_engine();
@@ -1309,12 +1368,18 @@
         }
     });
     
-    G.events.attach("move", function onmove()
+    G.events.attach("move", function onmove(e)
     {
+        var ply = game_history.length;
+        
         if (!pieces_moved) {
             G.events.trigger("firstMove");
             pieces_moved = true;
         }
+        
+        ///NOTE: board.turn has already switched.
+        game_history[ply] = {move: e.move, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
+        prep_eval(cur_pos_cmd, ply);
     });
     
     
@@ -1509,6 +1574,15 @@
         
         return clock_manager;
     }());
+    /*
+    rating_slider = function make_rating_slider()
+    {
+        var container = G.cde("div", {c: "ratingContainer"}),
+            slider_el = G.cde("div", {c: "ratingSlider"});
+        
+        
+    }());
+    */
     
     init();
 }());
