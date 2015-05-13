@@ -470,7 +470,6 @@
             game_history[ply].evaled = true;
             evaler.busy = false;
             G.events.trigger("evaled", {ply: ply});
-            console.log(game_history)
         }, function stream(str)
         {
             var matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+) .*pv (.+)/),
@@ -478,23 +477,30 @@
                 type,
                 depth,
                 pv;
-            console.log(str)
+            
             if (matches) {
                 depth = Number(matches[1]);
                 type = matches[2];
                 score = Number(matches[3]);
                 pv = matches[4].split(" ");
                 
+                /// Convert the relative score to an absolute score.
                 if (game_history[ply].turn === "b") {
                     score *= -1;
                 }
-                console.log(ply)
+                
                 game_history[ply].eval_score = score;
                 game_history[ply].eval_type = type;
                 game_history[ply].eval_depth = depth;
                 game_history[ply].eval_pv = pv;
                 
                 G.events.trigger("eval", {ply: ply, score: score, type: type, depth: depth, pv: pv});
+            } else {
+                if (/score mate 0\b/.test(str)) {
+                    game_history[ply].eval_score = 0;
+                    game_history[ply].eval_type = "mate";
+                    game_history[ply].eval_depth = 0;
+                }
             }
         });
     }
