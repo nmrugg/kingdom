@@ -256,6 +256,7 @@
         resize_board();
         resize_players();
         resize_center();
+        rating_slider.resize();
     }
     
     function get_legal_moves(pos, cb)
@@ -476,7 +477,8 @@
                 score,
                 type,
                 depth,
-                pv;
+                pv,
+                data;
             
             if (matches) {
                 depth = Number(matches[1]);
@@ -494,13 +496,21 @@
                 game_history[ply].eval_depth = depth;
                 game_history[ply].eval_pv = pv;
                 
-                G.events.trigger("eval", {ply: ply, score: score, type: type, depth: depth, pv: pv});
+                data = {score: score, type: type, depth: depth, pv: pv};
+                //G.events.trigger("eval", {ply: ply, , turn: game_history[ply].turn});
             } else {
                 if (/score mate 0\b/.test(str)) {
                     game_history[ply].eval_score = 0;
                     game_history[ply].eval_type = "mate";
                     game_history[ply].eval_depth = 0;
+                    data = {score: 0, type: "mate", depth: 0};
                 }
+            }
+            
+            if (data) {
+                data.ply = ply;
+                data.turn = game_history[ply].turn;
+                G.events.trigger("eval", data);
             }
         });
     }
@@ -767,14 +777,14 @@
         }
         
         /// A simple check to see if the FEN makes sense.
-        if (!/^\s*fen\s+[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*/i.test(startpos)) {
+        if (!/^\s*fen\s+[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*/i.test(fen)) {
             return return_val(false);
         }
         
         /// Set it to an invalid one first, so that when we set it to a valid one, it should change; otherwise it will remain invalid.
         ///NOTE: Stockfish just completely ignores invalid FEN's. It also allows for lots of omissions.
         legal_move_engine.send("position fen 8/8/8/8/8/8/8/8 b - - 0 1");
-        get_legal_moves("position " + startpos, function onget(data)
+        get_legal_moves("position " + fen, function onget(data)
         {
             var wkings = 0,
                 bkings = 0;
@@ -906,8 +916,9 @@
                         return starting_new_game = false;
                     }
                     
-                    game_history = [{turn: board.turn, pos: startpos}];
-                    prep_eval(startpos, 0);
+                    game_history = [{turn: board.turn, pos: "position " + startpos}];
+                    //debugger;
+                    prep_eval(game_history[0].pos, 0);
                     
                     clock_manager.reset_clocks();
                     starting_new_game = false;
@@ -1580,15 +1591,95 @@
         
         return clock_manager;
     }());
-    /*
+    
     rating_slider = function make_rating_slider()
     {
         var container = G.cde("div", {c: "ratingContainer"}),
-            slider_el = G.cde("div", {c: "ratingSlider"});
+            slider_el = G.cde("div", {c: "ratingSlider"}),
+            obj = {max: 1000, min: -1000, value: 0};
         
+        function calculate_slope()
+        {
+            /// m = change in y-value (y2-y1)
+            ///     change in x-value (x2-x1)
+            obj.m = (100 - 0) / (obj.min - obj.max);
+        }
         
-    }());
-    */
+        calculate_slope();
+        
+        //board.el.appendChild(container);
+        obj.resize = function ()
+        {
+            var board_rect = board.el.getBoundingClientRect();
+            //console.log(board_rect)
+            //debugger;
+            container.style.top = board_rect.top + "px";
+            container.style.bottom = (window.innerHeight - board_rect.bottom) + "px";
+            container.style.right = (window.innerWidth - board_rect.left) + "px";
+            container.style.left = (board_rect.left - (board_rect.width / 16)) + "px";
+            //console.log(board_rect.width)
+        };
+        
+        /// max =   0%
+        /// 0   =  50%
+        /// min = 100%
+        /// y=mx+b
+        /// b = 50
+        /// 
+        ///  10 = 0
+        ///   0 = 50
+        /// -10 = 100
+        
+
+        ///
+        
+        ///   10,0
+        ///   0,50
+        /// -10,100
+        ///
+        /// 100 - 0
+        /// -10 - 10
+        obj.set_eval = function (value)
+        {
+            obj.value = Number(value);
+            slider_el.style.height = ((obj.m * obj.value) + 50) + "%";
+        };
+        
+        /// Set default.
+        obj.set_eval(obj.value);
+        
+        /*
+        setTimeout(function ()
+        {
+            obj.set_eval(5);
+        }, 3000);
+        */
+        
+        container.appendChild(slider_el);
+        board.el.parentNode.insertBefore(container, board.el);
+        
+    
+        G.events.attach("eval", function oneval(e)
+        {
+            console.log(e)
+            /// Is this eval for the current position?
+            if (e.ply === game_history.length - 1) {
+                if (e.type === "cp") {
+                    obj.set_eval(e.score);
+                } else if (e.type === "mate") {
+                    if (e.score === 0) {
+                        obj.set_eval(e.turn === "w" ? -obj.max : obj.max);
+                    } else {
+                        obj.set_eval(e.score > 0 ? obj.max : -obj.max);
+                    }
+                }
+            }
+            //{ply: ply, score: score, type: type, depth: depth, pv: pv});
+            //if (
+        });
+        
+        return obj;
+    }();
     
     init();
 }());
