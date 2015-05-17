@@ -163,3 +163,84 @@
     background-color: rgba(89, 142, 222, .5);
     opacity: 1;
 }
+
+.chess_board .hoverSquare {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    pointer-events: none;
+}
+.chess_board.catchClicks .hoverSquare {
+    pointer-events: all!important;
+}
+
+.chess_board .hoverSquare.red {
+    background-color: rgba(240, 0, 0, .5);
+}
+.chess_board .hoverSquare.green {
+    background-color: rgba(0, 240, 0, .5);
+}
+.chess_board .hoverSquare.blue {
+    background-color: rgba(0, 0, 240, .5);
+}
+.chess_board .hoverSquare.yellow {
+    background-color: rgba(240, 240, 0, .5);
+}
+.chess_board .hoverSquare.teal {
+    background-color: rgba(0, 240, 240, .5);
+}
+.chess_board .hoverSquare.orange {
+    background-color: rgba(240, 120, 0, .5);
+}
+.chess_board .hoverSquare.purple {
+    background-color: rgba(120, 0, 120, .5);
+}
+
+/*
+.chess_board .hoverSquare.light.red {
+    background-color: #f00000;
+}
+.chess_board .hoverSquare.light.blue {
+    background-color: #0000f0;
+}
+.chess_board .hoverSquare.light.green {
+    background-color: #00f00f;
+}
+.chess_board .hoverSquare.light.yellow {
+    background-color: #f0f000;
+}
+.chess_board .hoverSquare.dark.teal {
+    background-color: #00f0f0;
+}
+.chess_board .hoverSquare.light.orange {
+    background-color: #f07000;
+}
+.chess_board .hoverSquare.light.purple {
+    background-color: #f000f0;
+}
+
+.chess_board .hoverSquare.dark.red {
+    background-color: #b50000;
+}
+.chess_board .hoverSquare.dark.blue {
+    background-color: #0000b5;
+}
+.chess_board .hoverSquare.dark.green {
+    background-color: #00b500;
+}
+.chess_board .hoverSquare.dark.yellow {
+    background-color: #b5b500;
+}
+.chess_board .hoverSquare.dark.teal {
+    background-color: #00b5b5;
+}
+.chess_board .hoverSquare.dark.orange {
+    background-color: #b55400;
+}
+.chess_board .hoverSquare.dark.purple {
+    background-color: #b500b5;
+}
+*/

@@ -10,7 +10,10 @@ var BOARD = function board_init(el, options)
             files: 8,
         },
         squares,
-        pos;
+        hover_squares,
+        pos,
+        colors = ["red", "blue", "green", "yellow", "teal", "orange", "purple"],
+        cur_color = 0;
     
     function num_to_alpha(num)
     {
@@ -40,6 +43,61 @@ var BOARD = function board_init(el, options)
         //return "6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39";
     }
     
+    function remove_highlight(x, y)
+    {
+        if (hover_squares[y][x].color) {
+            hover_squares[y][x].classList.remove(hover_squares[y][x].color);
+            delete hover_squares[y][x].color;
+        }
+    }
+    
+    function highlight_square(x, y, color)
+    {
+        remove_highlight(x, y);
+        if (color) {
+            hover_squares[y][x].color = color;
+            hover_squares[y][x].classList.add(color);
+        }
+    }
+    
+    /**
+     * Ctrl click to set/remove colors.
+     * Ctrl Left/Right to change colors.
+     * Ctrl non-left click to (only/always) remove colors.
+     */
+    function hover_square_click_maker(x, y)
+    {
+        return function (e)
+        {
+            var new_color = colors[cur_color];
+            if (is_left_click(e)) {
+                if (hover_squares[y][x].color === new_color) {
+                    remove_highlight(x, y);
+                } else {
+                    highlight_square(x, y, new_color);
+                }
+            } else {
+                if (hover_squares[y][x].color) {
+                    remove_highlight(x, y);
+                }
+                e.preventDefault();
+            }
+        };
+    }
+    
+    function make_hover_square(x, y)
+    {
+        var el = document.createElement("div");
+        
+        el.classList.add("hoverSquare");
+        el.classList.add("rank" + y);
+        el.classList.add("file" + x);
+        
+        el.addEventListener("click", hover_square_click_maker(x, y));
+        
+        return el;
+    }
+    
     function make_square(x, y)
     {
         var el = document.createElement("div");
@@ -53,8 +111,6 @@ var BOARD = function board_init(el, options)
         } else {
             el.classList.add("dark");
         }
-        
-        ///TODO: attach events
         
         return el;
     }
@@ -142,11 +198,14 @@ var BOARD = function board_init(el, options)
         }
         
         squares = [];
+        hover_squares = [];
         
         for (y = board_details.ranks - 1; y >= 0; y -= 1) {
             squares[y] = [];
+            hover_squares[y] = [];
             for (x = 0; x < board_details.files; x += 1) {
                 squares[y][x] = make_square(x, y);
+                hover_squares[y][x] = make_hover_square(x, y);
                 if (x === 0) {
                     cur_rank = make_rank(y);
                     board.el.appendChild(cur_rank);
@@ -155,6 +214,7 @@ var BOARD = function board_init(el, options)
                 if (y === 0) {
                     squares[y][x].appendChild(make_board_letter(x));
                 }
+                squares[y][x].appendChild(hover_squares[y][x]);
                 cur_rank.appendChild(squares[y][x]);
             }
         }
@@ -587,7 +647,7 @@ var BOARD = function board_init(el, options)
                 add_piece_events(piece);
             }
             
-            /// We just put them all in the bottom left corner and more the position.
+            /// We just put them all in the bottom left corner and move the position.
             squares[0][0].appendChild(piece.el);
             set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
@@ -693,6 +753,31 @@ var BOARD = function board_init(el, options)
         track_move(uci);
     }
     
+    function onkeydown(e)
+    {
+        if (e.ctrlKey) {
+            board.el.classList.add("catchClicks");
+            if (e.keyCode === 39) { /// Right
+                cur_color += 1;
+                if (cur_color >= colors.length) {
+                    cur_color = 0;
+                }
+            } else if (e.keyCode === 37) { /// Left
+                cur_color -= 1;
+                if (cur_color < 0) {
+                    cur_color = colors.length - 1;
+                }
+            }
+        }
+    }
+    
+    function onkeyup(e)
+    {
+        if (!e.ctrlKey) {
+            board.el.classList.remove("catchClicks");
+        }
+    }
+    
     function get_fen(full)
     {
         var ranks = [],
@@ -777,6 +862,8 @@ var BOARD = function board_init(el, options)
     window.addEventListener("touchmove", onmousemove);
     window.addEventListener("mouseup",  onmouseup);
     window.addEventListener("touchend", onmouseup);
+    window.addEventListener("keydown", onkeydown);
+    window.addEventListener("keyup", onkeyup);
     
     return board;
 };
