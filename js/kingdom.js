@@ -408,7 +408,7 @@
                 if (board.mode === "play") {
                     /// Was it checkmate?
                     if (moves.checkers.length && !stalemate_by_rules) {
-                        alert((board.turn === "b" ? "Black" : "White") + " is checkmated!");
+                        alert((board.turn === "b" ? "White" : "Black") + " wins!\n" + (board.turn === "b" ? "Black" : "White") + " is checkmated!");
                     } else {
                         if (stalemate_by_rules) {
                             if (stalemate_by_rules === "50") {
