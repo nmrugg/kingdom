@@ -60,10 +60,22 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function clear_highlights()
+    {
+        hover_squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_highlight(x, y);
+            });
+        });
+    }
+    
     /**
      * Ctrl click to set/remove colors.
      * Ctrl Left/Right to change colors.
-     * Ctrl non-left click to (only/always) remove colors.
+     * Ctrl Non-left click to (only/always) remove colors.
+     * Ctrl Space to clear board of highlights.
      */
     function hover_square_click_maker(x, y)
     {
@@ -77,9 +89,7 @@ var BOARD = function board_init(el, options)
                     highlight_square(x, y, new_color);
                 }
             } else {
-                if (hover_squares[y][x].color) {
-                    remove_highlight(x, y);
-                }
+                remove_highlight(x, y);
                 e.preventDefault();
             }
         };
@@ -767,6 +777,8 @@ var BOARD = function board_init(el, options)
                 if (cur_color < 0) {
                     cur_color = colors.length - 1;
                 }
+            } else if (e.keyCode === 32) { /// Space
+                clear_highlights();
             }
         }
     }
