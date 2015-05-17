@@ -208,6 +208,8 @@
     
     function calculate_board_size(w, h)
     {
+        var snap;
+        
         w = w || window.innerWidth;
         h = h || window.innerHeight;
         
@@ -217,7 +219,13 @@
             h = w;
         }
         
-        return Math.round(w * .9);
+        w = Math.round(w * .9);
+        
+        snap = w % board.board_details.files;
+        
+        w -= snap;
+        
+        return w;
     }
     
     function resize_board()
