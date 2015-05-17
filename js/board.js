@@ -12,7 +12,7 @@ var BOARD = function board_init(el, options)
         squares,
         hover_squares,
         pos,
-        colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple"],
+        colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple", "pink"],
         cur_color = 0,
         capturing_clicks;
     
@@ -871,6 +871,7 @@ var BOARD = function board_init(el, options)
         is_legal_move: is_legal_move,
         moves: [],
         get_fen: get_fen,
+        board_details: board_details,
     /// legal_move[]
     /// onmove()
     /// onswitch()

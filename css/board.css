@@ -179,25 +179,28 @@
 
 
 .chess_board .hoverSquare.blue {
-    background-color: rgba(0, 0, 240, .5);
+    background-color: rgba(0, 0, 240, .6);
 }
 .chess_board .hoverSquare.red {
-    background-color: rgba(240, 0, 0, .5);
+    background-color: rgba(240, 0, 0, .6);
 }
 .chess_board .hoverSquare.green {
-    background-color: rgba(0, 240, 0, .5);
+    background-color: rgba(0, 240, 0, .6);
 }
 .chess_board .hoverSquare.yellow {
-    background-color: rgba(240, 240, 0, .5);
+    background-color: rgba(240, 240, 0, .6);
 }
 .chess_board .hoverSquare.teal {
-    background-color: rgba(0, 240, 240, .5);
+    background-color: rgba(0, 240, 240, .6);
 }
 .chess_board .hoverSquare.orange {
-    background-color: rgba(240, 120, 0, .5);
+    background-color: rgba(240, 120, 0, .6);
 }
 .chess_board .hoverSquare.purple {
-    background-color: rgba(120, 0, 120, .5);
+    background-color: rgba(120, 0, 120, .6);
+}
+.chess_board .hoverSquare.pink {
+    background-color: rgba(240, 0, 240, .6);
 }
 
 
