@@ -46,9 +46,9 @@ var BOARD = function board_init(el, options)
     
     function remove_highlight(x, y)
     {
-        if (hover_squares[y][x].color) {
-            hover_squares[y][x].classList.remove(hover_squares[y][x].color);
-            delete hover_squares[y][x].color;
+        if (hover_squares[y][x].highlight_color) {
+            hover_squares[y][x].classList.remove(hover_squares[y][x].highlight_color);
+            delete hover_squares[y][x].highlight_color;
         }
     }
     
@@ -56,7 +56,7 @@ var BOARD = function board_init(el, options)
     {
         remove_highlight(x, y);
         if (color) {
-            hover_squares[y][x].color = color;
+            hover_squares[y][x].highlight_color = color;
             hover_squares[y][x].classList.add(color);
         }
     }
@@ -84,7 +84,7 @@ var BOARD = function board_init(el, options)
         {
             var new_color = colors[cur_color];
             if (is_left_click(e)) {
-                if (hover_squares[y][x].color === new_color) {
+                if (hover_squares[y][x].highlight_color === new_color) {
                     remove_highlight(x, y);
                 } else {
                     highlight_square(x, y, new_color);
