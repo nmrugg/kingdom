@@ -172,6 +172,7 @@
     right: 0;
     z-index: 5;
     pointer-events: none;
+    opacity: .8;
 }
 .chess_board.catchClicks .hoverSquare {
     pointer-events: all!important;
