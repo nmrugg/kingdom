@@ -13,7 +13,8 @@ var BOARD = function board_init(el, options)
         hover_squares,
         pos,
         colors = ["red", "blue", "green", "yellow", "teal", "orange", "purple"],
-        cur_color = 0;
+        cur_color = 0,
+        capturing_clicks;
     
     function num_to_alpha(num)
     {
@@ -340,6 +341,10 @@ var BOARD = function board_init(el, options)
     
     function onmousemove(e)
     {
+        /// If the user held the ctrl button and then clicked off of the browser, it will still be marked as capturing. We remove that here.
+        if (capturing_clicks && !e.ctrlKey) {
+            stop_capturing_clicks();
+        }
         if (board.dragging && board.dragging.piece) {
             fix_touch_event(e);
             prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)")
@@ -767,6 +772,7 @@ var BOARD = function board_init(el, options)
     {
         if (e.ctrlKey) {
             board.el.classList.add("catchClicks");
+            capturing_clicks = true;
             if (e.keyCode === 39) { /// Right
                 cur_color += 1;
                 if (cur_color >= colors.length) {
@@ -783,10 +789,16 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function stop_capturing_clicks()
+    {
+        board.el.classList.remove("catchClicks");
+        capturing_clicks = false;
+    }
+    
     function onkeyup(e)
     {
         if (!e.ctrlKey) {
-            board.el.classList.remove("catchClicks");
+            stop_capturing_clicks();
         }
     }
     
