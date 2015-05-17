@@ -177,14 +177,15 @@
     pointer-events: all!important;
 }
 
+
+.chess_board .hoverSquare.blue {
+    background-color: rgba(0, 0, 240, .5);
+}
 .chess_board .hoverSquare.red {
     background-color: rgba(240, 0, 0, .5);
 }
 .chess_board .hoverSquare.green {
     background-color: rgba(0, 240, 0, .5);
-}
-.chess_board .hoverSquare.blue {
-    background-color: rgba(0, 0, 240, .5);
 }
 .chess_board .hoverSquare.yellow {
     background-color: rgba(240, 240, 0, .5);
@@ -199,48 +200,68 @@
     background-color: rgba(120, 0, 120, .5);
 }
 
-/*
-.chess_board .hoverSquare.light.red {
-    background-color: #f00000;
+
+.chess_board .focusSquareGreen .hoverSquare:before, .chess_board .focusSquareGreen .hoverSquare:after, .chess_board .focusSquareGreen.square:before, .chess_board .focusSquareGreen.square:after {
+    border-color: rgba(0, 140, 0, .8);
 }
-.chess_board .hoverSquare.light.blue {
-    background-color: #0000f0;
+.chess_board .focusSquareRed .hoverSquare:before, .chess_board .focusSquareRed .hoverSquare:after, .chess_board .focusSquareRed.square:before, .chess_board .focusSquareRed.square:after {
+    border-color: rgba(140, 0, 0, .8);
 }
-.chess_board .hoverSquare.light.green {
-    background-color: #00f00f;
+.chess_board .focusSquare .hoverSquare:before {
+    position:absolute;
+    content:' ';
+    top: 0;
+    left: 0;
+    right: 80%;
+    bottom: 80%;
+    border-style:solid;
+    border-width: 3px 0 0 3px;
+    border-top-left-radius: 5px;
 }
-.chess_board .hoverSquare.light.yellow {
-    background-color: #f0f000;
-}
-.chess_board .hoverSquare.dark.teal {
-    background-color: #00f0f0;
-}
-.chess_board .hoverSquare.light.orange {
-    background-color: #f07000;
-}
-.chess_board .hoverSquare.light.purple {
-    background-color: #f000f0;
+.chess_board .focusSquare .hoverSquare:after {
+    position:absolute;
+    content:' ';
+    top: 0;
+    right: 0;
+    left: 80%;
+    bottom: 80%;
+    border-style:solid;
+    border-width: 3px 3px 0 0;
+    border-top-right-radius: 5px;
 }
 
-.chess_board .hoverSquare.dark.red {
-    background-color: #b50000;
+.chess_board .focusSquare.square:before {
+    position:absolute;
+    content:' ';
+    bottom: 0;
+    left: 0;
+    right: 80%;
+    top: 80%;
+    border-style:solid;
+    border-width: 0 0 3px 3px;
+    border-bottom-left-radius: 5px;
 }
-.chess_board .hoverSquare.dark.blue {
-    background-color: #0000b5;
+.chess_board .focusSquare.square:after {
+    position:absolute;
+    content:' ';
+    bottom: 0;
+    right: 0;
+    left: 80%;
+    top: 80%;
+    border-style:solid;
+    border-width: 0 3px 3px 0;
+    border-bottom-right-radius: 5px;
 }
-.chess_board .hoverSquare.dark.green {
-    background-color: #00b500;
+
+.chess_board .dotSquare {
+    background-repeat: no-repeat;
+    background-position: 50%;
+    background-size: 22%;
 }
-.chess_board .hoverSquare.dark.yellow {
-    background-color: #b5b500;
+
+.chess_board .dotSquareRed {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10.3" height="10.3"><path d="M10.132 5.133c0 2.758-2.236 4.994-4.994 4.994C2.38 10.127.144 7.89.144 5.133.144 2.375 2.38.14 5.138.14c2.758 0 4.994 2.235 4.994 4.993z" fill="#c80000" fill-rule="evenodd" stroke="#000" stroke-width="0.3" stroke-opacity=".3"/></svg>');
 }
-.chess_board .hoverSquare.dark.teal {
-    background-color: #00b5b5;
+.chess_board .dotSquareGreen {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10.3" height="10.3"><path d="M10.132 5.133c0 2.758-2.236 4.994-4.994 4.994C2.38 10.127.144 7.89.144 5.133.144 2.375 2.38.14 5.138.14c2.758 0 4.994 2.235 4.994 4.993z" fill="#00c800" fill-rule="evenodd" stroke="#000" stroke-width="0.3" stroke-opacity=".3"/></svg>');
 }
-.chess_board .hoverSquare.dark.orange {
-    background-color: #b55400;
-}
-.chess_board .hoverSquare.dark.purple {
-    background-color: #b500b5;
-}
-*/

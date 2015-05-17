@@ -12,7 +12,7 @@ var BOARD = function board_init(el, options)
         squares,
         hover_squares,
         pos,
-        colors = ["red", "blue", "green", "yellow", "teal", "orange", "purple"],
+        colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple"],
         cur_color = 0,
         capturing_clicks;
     
