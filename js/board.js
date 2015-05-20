@@ -480,7 +480,7 @@ var BOARD = function board_init(el, options)
         }
     }
     
-    function get_hovering_square(e)
+    function get_dragging_hovering_square(e)
     {
         fix_touch_event(e);
         var el,
@@ -494,7 +494,7 @@ var BOARD = function board_init(el, options)
         
         el = document.elementFromPoint(x, y);
         
-        if (el && el.className && el.classList.contains("square")) {
+        if (el && el.className && el.classList.contains("square") || el.classList.contains("hoverSquare")) {
             rank_m = el.className.match(/rank(\d+)/);
             file_m = el.className.match(/file(\d+)/);
             
@@ -744,7 +744,7 @@ var BOARD = function board_init(el, options)
             promoting;
         
         if (board.dragging && board.dragging.piece) {
-            square = get_hovering_square(e);
+            square = get_dragging_hovering_square(e);
             promoting = is_promoting(board.dragging.piece, square);
             
             uci = get_move(board.dragging.piece, square);
