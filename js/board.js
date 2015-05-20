@@ -44,6 +44,27 @@ var BOARD = function board_init(el, options)
         //return "6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39";
     }
     
+    function remove_square_focus(x, y)
+    {
+        if (squares[y][x].focus_color) {
+            //hover_squares[y][x].classList.remove("focus_square_" + hover_squares[y][x][highlight_color]);
+            //hover_squares[y][x].classList.remove("focusSquare");
+            squares[y][x].classList.remove("focus_square_" + hover_squares[y][x].focus_color);
+            squares[y][x].classList.remove("focusSquare");
+            delete squares[y][x].focus_color;
+        }
+    }
+    
+    function focus_square(x, y, color)
+    {
+        remove_square_focus(x, y);
+        if (color && colors.indexOf(color) > -1) {
+            squares[y][x].focus_color = color;
+            squares[y][x].classList.add("focus_square_" + color);
+            squares[y][x].classList.add("focusSquare");
+        }
+    }
+    
     function remove_highlight(x, y)
     {
         if (hover_squares[y][x].highlight_color) {
@@ -55,7 +76,7 @@ var BOARD = function board_init(el, options)
     function highlight_square(x, y, color)
     {
         remove_highlight(x, y);
-        if (color) {
+        if (color && colors.indexOf(color) > -1) {
             hover_squares[y][x].highlight_color = color;
             hover_squares[y][x].classList.add(color);
         }
@@ -68,6 +89,17 @@ var BOARD = function board_init(el, options)
             file.forEach(function oneach(sq, x)
             {
                 remove_highlight(x, y);
+            });
+        });
+    }
+    
+    function clear_focuses()
+    {
+        squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_square_focus(x, y);
             });
         });
     }
@@ -323,11 +355,21 @@ var BOARD = function board_init(el, options)
                 /// Prevent the cursor from becoming an I beam.
                 e.preventDefault();
             }
+            
+            clear_focuses();
+            
+            if (is_piece_moveable(piece)) {
+                focus_square(piece.file, piece.rank, "green");
+            }
         }
-    
+        
         piece.el.addEventListener("mousedown", onpiece_mouse_down);
         
         piece.el.addEventListener("touchstart", onpiece_mouse_down);
+        
+        //if (square && board.dragging.piece.rank === square.rank && board.dragging.piece.file === square.file) {
+            //focus_square(piece.file, piece.rank, "green");
+        //}
     }
     
     function prefix_css(el, prop, value)
@@ -610,6 +652,7 @@ var BOARD = function board_init(el, options)
             }
             
             if (square && (board.mode === "setup" || is_legal_move(uci))) {
+                clear_focuses();
                 piece_storage = board.dragging.piece;
                 move_piece(board.dragging.piece, square, uci);
                 report_move(uci, promoting, board.dragging.piece, function onreport(finalized_uci)
@@ -619,7 +662,6 @@ var BOARD = function board_init(el, options)
                 });
             } else {
                 /// Snap back.
-                ///TODO: Be able to remove pieces in setup mode.
                 if (board.mode === "setup") {
                     remove_piece(board.dragging.piece);
                     /// We need to remove "dragging" to make the transitions work again.
@@ -872,6 +914,9 @@ var BOARD = function board_init(el, options)
         moves: [],
         get_fen: get_fen,
         board_details: board_details,
+        highlight_colors: colors,
+        clear_highlights: clear_highlights,
+        highlight_square: highlight_square,
     /// legal_move[]
     /// onmove()
     /// onswitch()

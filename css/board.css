@@ -205,11 +205,11 @@
 }
 
 
-.chess_board .focusSquareGreen .hoverSquare:before, .chess_board .focusSquareGreen .hoverSquare:after, .chess_board .focusSquareGreen.square:before, .chess_board .focusSquareGreen.square:after {
-    border-color: rgba(0, 140, 0, .8);
+.chess_board .focus_square_green .hoverSquare:before, .chess_board .focus_square_green .hoverSquare:after, .chess_board .focus_square_green.square:before, .chess_board .focus_square_green.square:after {
+    border-color: rgb(0, 140, 0);
 }
-.chess_board .focusSquareRed .hoverSquare:before, .chess_board .focusSquareRed .hoverSquare:after, .chess_board .focusSquareRed.square:before, .chess_board .focusSquareRed.square:after {
-    border-color: rgba(140, 0, 0, .8);
+.chess_board .focus_square_red .hoverSquare:before, .chess_board .focus_square_red .hoverSquare:after, .chess_board .focus_square_red.square:before, .chess_board .focus_square_red.square:after {
+    border-color: rgb(140, 0, 0);
 }
 .chess_board .focusSquare .hoverSquare:before {
     position:absolute;
