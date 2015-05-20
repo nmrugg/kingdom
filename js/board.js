@@ -93,6 +93,7 @@ var BOARD = function board_init(el, options)
     
     function clear_focuses()
     {
+        delete board.clicked_piece;
         squares.forEach(function oneach(file, y)
         {
             file.forEach(function oneach(sq, x)
@@ -112,16 +113,26 @@ var BOARD = function board_init(el, options)
     {
         return function (e)
         {
-            var new_color = colors[cur_color];
-            if (is_left_click(e)) {
-                if (hover_squares[y][x].highlight_color === new_color) {
-                    remove_highlight(x, y);
+            var new_color,
+                square;
+            
+            if (e.ctrlKey) {
+                /// Highlight the sqaure.
+                new_color = colors[cur_color];
+                if (is_left_click(e)) {
+                    if (hover_squares[y][x].highlight_color === new_color) {
+                        remove_highlight(x, y);
+                    } else {
+                        highlight_square(x, y, new_color);
+                    }
                 } else {
-                    highlight_square(x, y, new_color);
+                    remove_highlight(x, y);
+                    e.preventDefault();
                 }
             } else {
-                remove_highlight(x, y);
-                e.preventDefault();
+                /// Move to the square.
+                square = {rank: y, file: x};
+                make_move(board.clicked_piece.piece, square, get_move(board.clicked_piece.piece, square), is_promoting(board.clicked_piece.piece, square));
             }
         };
     }
@@ -176,6 +187,16 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function add_clickabe_square(move_data)
+    {
+        if (board.clicked_piece) {
+            if (!board.clicked_piece.clickable_squares) {
+                board.clicked_piece.clickable_squares = [];
+            }
+            board.clicked_piece.clickable_squares.push(move_data);
+        }
+    }
+    
     function show_legal_moves(piece)
     {
         var start_sq = get_file_letter(piece.file) + (piece.rank + 1);
@@ -197,9 +218,11 @@ var BOARD = function board_init(el, options)
                         color = "red"
                     }
                     add_dot(move_data.file, move_data.rank, color);
+                    add_clickabe_square(move_data);
                 }
             });
         }
+        console.log(board.clicked_piece.clickable_squares);
     }
     
     function make_square(x, y)
@@ -397,6 +420,13 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function focus_piece_for_moving(piece)
+    {
+        board.clicked_piece = {piece: piece};
+        focus_square(piece.file, piece.rank, "green");
+        show_legal_moves(piece);
+    }
+    
     function add_piece_events(piece)
     {
         function onpiece_mouse_down(e)
@@ -420,8 +450,7 @@ var BOARD = function board_init(el, options)
             clear_focuses();
             
             if (is_piece_moveable(piece)) {
-                focus_square(piece.file, piece.rank, "green");
-                show_legal_moves(piece);
+                focus_piece_for_moving(piece);
             }
         }
         
@@ -494,9 +523,14 @@ var BOARD = function board_init(el, options)
     
     function get_move(starting, ending)
     {
+        var str;
         if (starting && ending) {
-            return get_file_letter(starting.file) + (parseInt(starting.rank, 10) + 1) + get_file_letter(ending.file) + (parseInt(ending.rank, 10) + 1);
+            str = get_file_letter(starting.file) + (parseInt(starting.rank, 10) + 1) + get_file_letter(ending.file) + (parseInt(ending.rank, 10) + 1);
+            if (is_promoting(starting, ending)) {
+                str += "q"; /// We just add something to make sure it's a legal move. We'll ask the user later what he actually wants to promote to.
+            }
         }
+        return str;
     }
     
     function create_promotion_icon(which, piece, cb)
@@ -692,12 +726,22 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function make_move(piece, square, uci, promoting)
+    {
+        clear_board_extras();
+        move_piece(piece, square, uci);
+        report_move(uci, promoting, piece, function onreport(finalized_uci)
+        {
+            ///NOTE: Since this is async, we need to store which piece was moved.
+            promote_piece(piece, finalized_uci);
+        });
+    }
+    
     function onmouseup(e)
     {
         var square,
             uci,
-            promoting,
-            piece_storage;
+            promoting;
         
         if (board.dragging && board.dragging.piece) {
             square = get_hovering_square(e);
@@ -705,13 +749,12 @@ var BOARD = function board_init(el, options)
             
             uci = get_move(board.dragging.piece, square);
             
-            if (promoting) {
-                uci += "q"; /// We just add something to make sure it's a legal move. We'll ask the user later what he actually wants to promote to.
-            }
-            
             if (square && (board.mode === "setup" || is_legal_move(uci))) {
-                clear_focuses();
-                clear_dots();
+                make_move(board.dragging.piece, square, uci, promoting);
+                /*
+                clear_board_extras();
+                //clear_focuses();
+                //clear_dots();
                 piece_storage = board.dragging.piece;
                 move_piece(board.dragging.piece, square, uci);
                 report_move(uci, promoting, board.dragging.piece, function onreport(finalized_uci)
@@ -719,6 +762,7 @@ var BOARD = function board_init(el, options)
                     ///NOTE: Since this is async, we need to store which piece was moved.
                     promote_piece(piece_storage, finalized_uci);
                 });
+                */
             } else {
                 /// Snap back.
                 if (board.mode === "setup") {
@@ -745,6 +789,13 @@ var BOARD = function board_init(el, options)
         return "url(\"" + encodeURI("img/pieces/" + board.theme + "/" + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
     }
     
+    function clear_board_extras()
+    {
+        clear_highlights();
+        clear_focuses();
+        clear_dots();
+    }
+    
     function set_board(fen)
     {
         fen = fen || get_init_pos();
@@ -767,6 +818,8 @@ var BOARD = function board_init(el, options)
             squares[0][0].appendChild(piece.el);
             set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
+        
+        clear_board_extras();
         
         board.turn = "w";
         board.moves = [];

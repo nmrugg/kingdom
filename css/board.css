@@ -257,10 +257,14 @@
     border-bottom-right-radius: 5px;
 }
 
+
 .chess_board .dotSquare {
     background-repeat: no-repeat;
     background-position: 50%;
     background-size: 22%;
+    /* Make the moveable squares look clickable. */
+    cursor: pointer;
+    pointer-events: all!important;
 }
 
 .chess_board .dot_square_red {
