@@ -139,6 +139,69 @@ var BOARD = function board_init(el, options)
         return el;
     }
     
+    
+    function get_rank_file_from_str(str)
+    {
+        return {rank: str[1] - 1, file: str.charCodeAt(0) - 97};
+    }
+    
+    function remove_dot(x, y)
+    {
+        if (hover_squares[y][x].dot_color) {
+            hover_squares[y][x].classList.remove("dot_square_" + hover_squares[y][x].dot_color);
+            hover_squares[y][x].classList.remove("dotSquare");
+            delete hover_squares[y][x].dot_color;
+        }
+    }
+    
+    function clear_dots()
+    {
+        hover_squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_dot(x, y);
+            });
+        });
+    }
+    
+    function add_dot(x, y, color)
+    {
+        remove_dot(x, y);
+        
+        if (color && colors.indexOf(color) > -1) {
+            hover_squares[y][x].dot_color = color;
+            hover_squares[y][x].classList.add("dot_square_" + color);
+            hover_squares[y][x].classList.add("dotSquare");
+        }
+    }
+    
+    function show_legal_moves(piece)
+    {
+        var start_sq = get_file_letter(piece.file) + (piece.rank + 1);
+        
+        clear_dots();
+        
+        if (board.legal_moves && board.legal_moves.uci) {
+            board.legal_moves.uci.forEach(function oneach(move, i)
+            {
+                var move_data,
+                    color;
+                
+                if (move.indexOf(start_sq) === 0) {
+                    move_data = get_rank_file_from_str(move.substr(2));
+                    ///NOTE: We can't use get_piece_from_rank_file(move_data.rank, move_data.file) because it won't find en passant.
+                    if (board.legal_moves.san[i].indexOf("x") === -1) {
+                        color = "green";
+                    } else {
+                        color = "red"
+                    }
+                    add_dot(move_data.file, move_data.rank, color);
+                }
+            });
+        }
+    }
+    
     function make_square(x, y)
     {
         var el = document.createElement("div");
@@ -332,67 +395,6 @@ var BOARD = function board_init(el, options)
             e.clientX = e.changedTouches[0].pageX;
             e.clientY = e.changedTouches[0].pageY;
         }
-    }
-    
-    function get_rank_file_from_str(str)
-    {
-        return {rank: str[1] - 1, file: str.charCodeAt(0) - 97};
-    }
-    
-    function remove_dot(x, y)
-    {
-        if (hover_squares[y][x].dot_color) {
-            hover_squares[y][x].classList.remove("dot_square_" + hover_squares[y][x].dot_color);
-            hover_squares[y][x].classList.remove("dotSquare");
-            delete hover_squares[y][x].dot_color;
-        }
-    }
-    
-    function clear_dots()
-    {
-        hover_squares.forEach(function oneach(file, y)
-        {
-            file.forEach(function oneach(sq, x)
-            {
-                remove_dot(x, y);
-            });
-        });
-    }
-    
-    function add_dot(x, y, color)
-    {
-        if (!color) {
-            ///TODO: Determine color
-            color = "green";
-        }
-        remove_dot(x, y);
-        if (color && colors.indexOf(color) > -1) {
-            hover_squares[y][x].dot_color = color;
-            hover_squares[y][x].classList.add("dot_square_" + color);
-            hover_squares[y][x].classList.add("dotSquare");
-        }
-    }
-    
-    function show_legal_moves(piece)
-    {
-        var start_sq = get_file_letter(piece.file) + (piece.rank + 1),
-            move_squares = [];
-        
-        clear_dots();
-        
-        if (board.legal_moves && board.legal_moves.uci) {
-            board.legal_moves.uci.forEach(function oneach(move)
-            {
-                if (move.indexOf(start_sq) === 0) {
-                    move_squares[move_squares.length] = get_rank_file_from_str(move.substr(2));
-                }
-            });
-        }
-        
-        move_squares.forEach(function oneach(move)
-        {
-            add_dot(move.file, move.rank);
-        });
     }
     
     function add_piece_events(piece)
