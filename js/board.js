@@ -47,9 +47,7 @@ var BOARD = function board_init(el, options)
     function remove_square_focus(x, y)
     {
         if (squares[y][x].focus_color) {
-            //hover_squares[y][x].classList.remove("focus_square_" + hover_squares[y][x][highlight_color]);
-            //hover_squares[y][x].classList.remove("focusSquare");
-            squares[y][x].classList.remove("focus_square_" + hover_squares[y][x].focus_color);
+            squares[y][x].classList.remove("focus_square_" + squares[y][x].focus_color);
             squares[y][x].classList.remove("focusSquare");
             delete squares[y][x].focus_color;
         }
@@ -336,6 +334,67 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function get_rank_file_from_str(str)
+    {
+        return {rank: str[1] - 1, file: str.charCodeAt(0) - 97};
+    }
+    
+    function remove_dot(x, y)
+    {
+        if (hover_squares[y][x].dot_color) {
+            hover_squares[y][x].classList.remove("dot_square_" + hover_squares[y][x].dot_color);
+            hover_squares[y][x].classList.remove("dotSquare");
+            delete hover_squares[y][x].dot_color;
+        }
+    }
+    
+    function clear_dots()
+    {
+        hover_squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_dot(x, y);
+            });
+        });
+    }
+    
+    function add_dot(x, y, color)
+    {
+        if (!color) {
+            ///TODO: Determine color
+            color = "green";
+        }
+        remove_dot(x, y);
+        if (color && colors.indexOf(color) > -1) {
+            hover_squares[y][x].dot_color = color;
+            hover_squares[y][x].classList.add("dot_square_" + color);
+            hover_squares[y][x].classList.add("dotSquare");
+        }
+    }
+    
+    function show_legal_moves(piece)
+    {
+        var start_sq = get_file_letter(piece.file) + (piece.rank + 1),
+            move_squares = [];
+        
+        clear_dots();
+        
+        if (board.legal_moves && board.legal_moves.uci) {
+            board.legal_moves.uci.forEach(function oneach(move)
+            {
+                if (move.indexOf(start_sq) === 0) {
+                    move_squares[move_squares.length] = get_rank_file_from_str(move.substr(2));
+                }
+            });
+        }
+        
+        move_squares.forEach(function oneach(move)
+        {
+            add_dot(move.file, move.rank);
+        });
+    }
+    
     function add_piece_events(piece)
     {
         function onpiece_mouse_down(e)
@@ -360,16 +419,13 @@ var BOARD = function board_init(el, options)
             
             if (is_piece_moveable(piece)) {
                 focus_square(piece.file, piece.rank, "green");
+                show_legal_moves(piece);
             }
         }
         
         piece.el.addEventListener("mousedown", onpiece_mouse_down);
         
         piece.el.addEventListener("touchstart", onpiece_mouse_down);
-        
-        //if (square && board.dragging.piece.rank === square.rank && board.dragging.piece.file === square.file) {
-            //focus_square(piece.file, piece.rank, "green");
-        //}
     }
     
     function prefix_css(el, prop, value)
@@ -653,6 +709,7 @@ var BOARD = function board_init(el, options)
             
             if (square && (board.mode === "setup" || is_legal_move(uci))) {
                 clear_focuses();
+                clear_dots();
                 piece_storage = board.dragging.piece;
                 move_piece(board.dragging.piece, square, uci);
                 report_move(uci, promoting, board.dragging.piece, function onreport(finalized_uci)
