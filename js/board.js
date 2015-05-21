@@ -203,8 +203,6 @@ var BOARD = function board_init(el, options)
     {
         var start_sq = get_file_letter(piece.file) + (piece.rank + 1);
         
-        clear_dots();
-        
         if (legal_moves && legal_moves.uci) {
             legal_moves.uci.forEach(function oneach(move, i)
             {
