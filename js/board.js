@@ -199,9 +199,14 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function get_piece_start_square(piece)
+    {
+        return get_file_letter(piece.file) + (piece.rank + 1);
+    }
+    
     function show_legal_moves(piece)
     {
-        var start_sq = get_file_letter(piece.file) + (piece.rank + 1);
+        var start_sq = get_piece_start_square(piece);
         
         if (legal_moves && legal_moves.uci) {
             legal_moves.uci.forEach(function oneach(move, i)
@@ -215,7 +220,7 @@ var BOARD = function board_init(el, options)
                     if (legal_moves.san[i].indexOf("x") === -1) {
                         color = "green";
                     } else {
-                        color = "red"
+                        color = "red";
                     }
                     add_dot(move_data.file, move_data.rank, color);
                     add_clickabe_square(move_data);
@@ -482,7 +487,7 @@ var BOARD = function board_init(el, options)
         }
         if (board.dragging && board.dragging.piece) {
             fix_touch_event(e);
-            prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)")
+            prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)");
         }
     }
     
@@ -718,15 +723,17 @@ var BOARD = function board_init(el, options)
     {
         var i;
         
+        function remove()
+        {
+            piece.el.parentNode.removeChild(piece.el);
+        }
+        
         for (i = board.pieces.length - 1; i >= 0; i -= 1) {
             if (piece.id === board.pieces[i].id) {
                 G.array_remove(board.pieces, i);
                 /// Make it fade out.
                 piece.el.classList.add("captured");
-                setTimeout(function ()
-                {
-                    piece.el.parentNode.removeChild(piece.el);
-                }, 2000);
+                setTimeout(remove, 2000);
                 return;
             }
         }
@@ -734,7 +741,6 @@ var BOARD = function board_init(el, options)
     
     function make_move(piece, square, uci, promoting)
     {
-        clear_board_extras();
         move_piece(piece, square, uci);
         report_move(uci, promoting, piece, function onreport(finalized_uci)
         {
@@ -815,7 +821,7 @@ var BOARD = function board_init(el, options)
                 
                 piece.el.classList.add("piece");
                 
-                piece.el.style.backgroundImage = get_piece_img(piece)
+                piece.el.style.backgroundImage = get_piece_img(piece);
                 
                 add_piece_events(piece);
             }
@@ -920,6 +926,7 @@ var BOARD = function board_init(el, options)
     {
         board.moves.push(uci);
         switch_turn();
+        clear_board_extras();
     }
     
     function move(uci)
@@ -1032,10 +1039,195 @@ var BOARD = function board_init(el, options)
         board.checked_king = king;
     }
     
+    
+    function show_lines_of_power()
+    {
+        var power_squares = [];
+        
+        function add_square(rank, file, piece)
+        {
+            var color;
+            
+            if (rank >= 0 && rank < board_details.ranks && file >= 0 && file < board_details.files) {
+                if (!power_squares[rank]) {
+                    power_squares[rank] = [];
+                }
+                
+                color = piece.color === "w" ? "red" : "blue";
+                
+                /// Mix.
+                if (power_squares[rank][file] && power_squares[rank][file].color !== color) {
+                    console.log(rank, file, power_squares[rank][file], color)
+                    color = "purple";
+                }
+                power_squares[rank][file] = {rank: rank, file: file, color: color};
+                ///TODO: Remove squares when in check that do not remove check.
+            }
+        }
+        
+        function add_squares_dir(piece, file_change, rank_change)
+        {
+            var rank = piece.rank,
+                file = piece.file;
+            
+            for (;;) {
+                rank += rank_change;
+                file += file_change;
+                if (file >= 0 && file < board_details.files && rank >= 0 && rank < board_details.ranks) {
+                    add_square(rank, file, piece);
+                    
+                    if (get_piece_from_rank_file(rank, file)) {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            /*
+            for (file = piece.file + file_change; file >= 0 && file < board_details.files; file += file_change) {
+                for (rank = piece.rank + rank_change; rank >= 0 && rank < board_details.ranks; rank += rank_change) {
+                    add_square(rank, file, piece);
+                    
+                    if (get_piece_from_rank_file(rank, file)) {
+                        break;
+                    }
+                }
+            }
+            */
+            /// get_piece_from_rank_file
+        }
+        /*
+        function add_orthogonal_squares_dir(piece, file_change, rank_change)
+        {
+            /// get_piece_from_rank_file
+        }
+        */
+        function add_diagonal_squares(piece)
+        {
+            add_squares_dir(piece,  1,  1);
+            add_squares_dir(piece,  1, -1);
+            add_squares_dir(piece, -1,  1);
+            add_squares_dir(piece, -1, -1);
+        }
+        
+        function add_orthogonal_squares(piece)
+        {
+            add_squares_dir(piece,  1,  0);
+            add_squares_dir(piece, -1,  0);
+            add_squares_dir(piece,  0,  1);
+            add_squares_dir(piece,  0, -1);
+        }
+        
+        board.pieces.forEach(function oneach(piece)
+        {
+            var dir;
+            if (!piece.captured) {
+                //console.log(piece)
+                if (piece.type === "p") {
+                    if (piece.color === "w") {
+                        dir = 1;
+                    } else {
+                        dir = -1;
+                    }
+                    add_square(piece.rank + dir, piece.file + 1, piece);
+                    add_square(piece.rank + dir, piece.file - 1, piece);
+                } else if (piece.type === "n") {
+                    add_square(piece.rank + 2, piece.file + 1, piece);
+                    add_square(piece.rank - 2, piece.file + 1, piece);
+                    add_square(piece.rank + 1, piece.file + 2, piece);
+                    add_square(piece.rank + 1, piece.file - 2, piece);
+                    add_square(piece.rank - 2, piece.file - 1, piece);
+                    add_square(piece.rank + 2, piece.file - 1, piece);
+                    add_square(piece.rank - 1, piece.file - 2, piece);
+                    add_square(piece.rank - 1, piece.file + 2, piece);
+                } else if (piece.type === "b") {
+                    add_diagonal_squares(piece);
+                } else if (piece.type === "r") {
+                    add_orthogonal_squares(piece);
+                } else if (piece.type === "q") {
+                    add_orthogonal_squares(piece);
+                    add_diagonal_squares(piece);
+                } else if (piece.type === "k") {
+                    //kings.push(piece);
+                    add_square(piece.rank + 1, piece.file + 1, piece);
+                    add_square(piece.rank - 1, piece.file - 1, piece);
+                    add_square(piece.rank + 1, piece.file - 1, piece);
+                    add_square(piece.rank - 1, piece.file + 1, piece);
+                    
+                    add_square(piece.rank + 1, piece.file    , piece);
+                    add_square(piece.rank - 1, piece.file    , piece);
+                    add_square(piece.rank    , piece.file - 1, piece);
+                    add_square(piece.rank    , piece.file + 1, piece);
+                    ///TODO: Save for later.
+                    ///NOTE: King's can't move into check (i.e., not onto a square that's the opposite color).
+                }
+            }
+        });
+        
+        console.log(power_squares);
+        power_squares.forEach(function oneach(ranks)
+        {
+            ranks.forEach(function oneach(data)
+            {
+                highlight_square(data.file, data.rank, data.color);
+            });
+        });
+    }
+    
+    function bad_show_checked_lines_of_power()
+    {
+        var power_squares = [];
+        
+        if (legal_moves && legal_moves.uci) {
+            board.pieces.forEach(function oneach(piece)
+            {
+                var start_sq = get_piece_start_square(piece);
+                
+                ///TODO PAWNS (castling? doesn't really matter since rooks always attack)
+                legal_moves.uci.forEach(function oneach(move, i)
+                {
+                    var move_data,
+                        color = piece.color === "w" ? "red" : "blue";
+                    
+                    if (move.indexOf(start_sq) === 0) {
+                        move_data = get_rank_file_from_str(move.substr(2));
+                        if (!power_squares[move_data.rank]) {
+                            power_squares[move_data.rank] = [];
+                        }
+                        /// Mix.
+                        if (power_squares[move_data.rank][move_data.file] && power_squares[move_data.rank][move_data.file] !== color) {
+                            color = "purple";
+                        }
+                        power_squares[move_data.rank][move_data.file] = {color: color, rank: move_data.rank, file: move_data.file};
+                        /*
+                        ///NOTE: We can't use get_piece_from_rank_file(move_data.rank, move_data.file) because it won't find en passant.
+                        if (legal_moves.san[i].indexOf("x") === -1) {
+                            color = "green";
+                        } else {
+                            color = "red"
+                        }
+                        add_dot(move_data.file, move_data.rank, color);
+                        add_clickabe_square(move_data);
+                        */
+                    }
+                });
+            });
+        }
+        //console.log(power_squares)
+        power_squares.forEach(function oneach(ranks)
+        {
+            ranks.forEach(function oneach(data)
+            {
+                highlight_square(data.file, data.rank, data.color);
+            });
+        });
+    }
+    
     function set_legal_moves(moves)
     {
         legal_moves = moves;
         focus_checked_king();
+        show_lines_of_power();
     }
     
     function get_legal_moves()
