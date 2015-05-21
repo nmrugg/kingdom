@@ -450,6 +450,7 @@ var BOARD = function board_init(el, options)
             
             if (board.clicked_piece && board.clicked_piece.piece) {
                 remove_square_focus(board.clicked_piece.piece.file, board.clicked_piece.piece.rank);
+                clear_dots();
                 /// If the king was previously selected, we want to refocus it.
                 if (board.checked_king) {
                     focus_square(board.checked_king.file, board.checked_king.rank, "red");
