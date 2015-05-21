@@ -14,7 +14,8 @@ var BOARD = function board_init(el, options)
         pos,
         colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple", "pink"],
         cur_color = 0,
-        capturing_clicks;
+        capturing_clicks,
+        legal_moves;
     
     function num_to_alpha(num)
     {
@@ -63,6 +64,18 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function clear_focuses()
+    {
+        delete board.clicked_piece;
+        squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_square_focus(x, y);
+            });
+        });
+    }
+    
     function remove_highlight(x, y)
     {
         if (hover_squares[y][x].highlight_color) {
@@ -87,18 +100,6 @@ var BOARD = function board_init(el, options)
             file.forEach(function oneach(sq, x)
             {
                 remove_highlight(x, y);
-            });
-        });
-    }
-    
-    function clear_focuses()
-    {
-        delete board.clicked_piece;
-        squares.forEach(function oneach(file, y)
-        {
-            file.forEach(function oneach(sq, x)
-            {
-                remove_square_focus(x, y);
             });
         });
     }
@@ -129,7 +130,8 @@ var BOARD = function board_init(el, options)
                     remove_highlight(x, y);
                     e.preventDefault();
                 }
-            } else {
+            } else if (board.clicked_piece) {
+                ///TODO: Make sure the move is valid.
                 /// Move to the square.
                 square = {rank: y, file: x};
                 make_move(board.clicked_piece.piece, square, get_move(board.clicked_piece.piece, square), is_promoting(board.clicked_piece.piece, square));
@@ -203,8 +205,8 @@ var BOARD = function board_init(el, options)
         
         clear_dots();
         
-        if (board.legal_moves && board.legal_moves.uci) {
-            board.legal_moves.uci.forEach(function oneach(move, i)
+        if (legal_moves && legal_moves.uci) {
+            legal_moves.uci.forEach(function oneach(move, i)
             {
                 var move_data,
                     color;
@@ -212,7 +214,7 @@ var BOARD = function board_init(el, options)
                 if (move.indexOf(start_sq) === 0) {
                     move_data = get_rank_file_from_str(move.substr(2));
                     ///NOTE: We can't use get_piece_from_rank_file(move_data.rank, move_data.file) because it won't find en passant.
-                    if (board.legal_moves.san[i].indexOf("x") === -1) {
+                    if (legal_moves.san[i].indexOf("x") === -1) {
                         color = "green";
                     } else {
                         color = "red"
@@ -446,7 +448,13 @@ var BOARD = function board_init(el, options)
                 e.preventDefault();
             }
             
-            clear_focuses();
+            if (board.clicked_piece && board.clicked_piece.piece) {
+                remove_square_focus(board.clicked_piece.piece.file, board.clicked_piece.piece.rank);
+                /// If the king was previously selected, we want to refocus it.
+                if (board.checked_king) {
+                    focus_square(board.checked_king.file, board.checked_king.rank, "red");
+                }
+            }
             
             if (is_piece_moveable(piece)) {
                 focus_piece_for_moving(piece);
@@ -513,11 +521,11 @@ var BOARD = function board_init(el, options)
     
     function is_legal_move(uci)
     {
-        if (!board.legal_moves || !board.legal_moves.uci) {
+        if (!legal_moves || !legal_moves.uci) {
             return false;
         }
         
-        return board.legal_moves.uci.indexOf(uci) > -1;
+        return legal_moves.uci.indexOf(uci) > -1;
     }
     
     function get_move(starting, ending)
@@ -590,7 +598,7 @@ var BOARD = function board_init(el, options)
         /// We make it async because of promotion.
         function record()
         {
-            delete board.legal_moves;
+            legal_moves = null;
             
             if (board.mode === "play" && board.onmove) {
                 track_move(uci);
@@ -598,7 +606,7 @@ var BOARD = function board_init(el, options)
             }
             
             if (cb) {
-                cb(uci)
+                cb(uci);
             }
         }
         
@@ -632,11 +640,11 @@ var BOARD = function board_init(el, options)
     
     function get_san(uci)
     {
-        if (!board.legal_moves || !board.legal_moves.uci || !board.legal_moves.san) {
+        if (!legal_moves || !legal_moves.uci || !legal_moves.san) {
             return;
         }
         
-        return board.legal_moves.san[board.legal_moves.uci.indexOf(uci)];
+        return legal_moves.san[legal_moves.uci.indexOf(uci)];
     }
     
     function promote_piece(piece, uci)
@@ -1002,6 +1010,40 @@ var BOARD = function board_init(el, options)
         return fen;
     }
     
+    function find_king(color)
+    {
+        var i;
+        
+        for (i = board.pieces.length - 1; i >= 0; i -= 1) {
+            if (board.pieces[i].color === color && board.pieces[i].type === "k") {
+                return board.pieces[i];
+            }
+        }
+    }
+    
+    function focus_checked_king()
+    {
+        var king;
+        if (legal_moves && legal_moves.checkers && legal_moves.checkers.length) {
+            king = find_king(board.turn);
+            if (king) {
+                focus_square(king.file, king.rank, "red");
+            }
+        }
+        board.checked_king = king;
+    }
+    
+    function set_legal_moves(moves)
+    {
+        legal_moves = moves;
+        focus_checked_king();
+    }
+    
+    function get_legal_moves()
+    {
+        return legal_moves;
+    }
+    
     board = {
         pieces: [],
         size_board: size_board,
@@ -1028,9 +1070,12 @@ var BOARD = function board_init(el, options)
         highlight_colors: colors,
         clear_highlights: clear_highlights,
         highlight_square: highlight_square,
-    /// legal_move[]
+        set_legal_moves: set_legal_moves,
+        get_legal_moves: get_legal_moves,
+    /// legal_move{}
     /// onmove()
     /// onswitch()
+    /// turn
     };
     
     options = options || {};

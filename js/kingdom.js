@@ -407,12 +407,12 @@
             /// Is the game still on?
             ///TODO: Only AI should automatically claim 50 move rule. (And probably not the lower levels).
             if (moves.uci.length && !stalemate_by_rules) {
-                board.legal_moves = moves;
+                board.set_legal_moves(moves);
                 if (cb) {
                     cb();
                 }
             } else {
-                board.legal_moves = {};
+                board.set_legal_moves({});
                 if (board.mode === "play") {
                     /// Was it checkmate?
                     if (moves.checkers.length && !stalemate_by_rules) {
@@ -529,7 +529,8 @@
             player = board.players[board.turn],
             move,
             ponder,
-            pos;
+            pos,
+            legal_moves = board.get_legal_moves();
         
         if (board.mode !== "play") {
             return;
@@ -544,11 +545,11 @@
             console.log("ILLEGAL MOVE: " + res[1]);
             console.log("!!!!!!!!!!!!!!!!!!!!!!!!");
             
-            if (!board.legal_moves || !board.legal_moves.uci) {
+            if (!legal_moves || !legal_moves.uci) {
                 error("Cannot find a legal move");
             }
             /// Just use the first legal move
-            move = board.legal_moves.uci[0];
+            move = legal_moves.uci[0];
             ponder = "";
         } else {
             move = res[1];
@@ -562,7 +563,7 @@
         set_cur_pos_cmd();
         
         /// Clear legal moves to indicate that we are between moves. (This is used by the clock manager to determine if it should look call the flag.)
-        board.legal_moves = {};
+        board.set_legal_moves({});
         
         /// Wait until we set legal moves. It's only fair.
         clock_manager.stop_timer();
@@ -1423,17 +1424,19 @@
         {
             var now = Date.now(),
                 diff,
-                player = board.players[color || board.turn];
+                player = board.players[color || board.turn],
+                legal_moves;
             
             diff = now - last_time;
             last_time = now;
             
             if (player.time_type !== "none") {
+                legal_moves = board.get_legal_moves();
                 player.time -= diff;
                 update_clock(player.color);
                 /// Has someone's time run out?
                 /// Also, make sure that the system has time to check to see if the game has already ended (either by checkmake or stalemate) by checking for legal moves.
-                if (player.time < 0 && (board.legal_moves && board.legal_moves.uci && board.legal_moves.uci.length)) {
+                if (player.time < 0 && (legal_moves && legal_moves.uci && legal_moves.uci.length)) {
                     /// If the player with time is almost beaten (or the game is almost a stalemate) call it a stalemate.
                     if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
                         alert("Stalemate: Player with time has insufficient material");
