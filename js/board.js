@@ -222,7 +222,6 @@ var BOARD = function board_init(el, options)
                 }
             });
         }
-        console.log(board.clicked_piece.clickable_squares);
     }
     
     function make_square(x, y)

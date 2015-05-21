@@ -212,8 +212,8 @@
     border-color: rgb(140, 0, 0);
 }
 .chess_board .focusSquare .hoverSquare:before {
-    position:absolute;
-    content:' ';
+    position: absolute;
+    content: ' ';
     top: 0;
     left: 0;
     right: 80%;
@@ -223,8 +223,8 @@
     border-top-left-radius: 5px;
 }
 .chess_board .focusSquare .hoverSquare:after {
-    position:absolute;
-    content:' ';
+    position: absolute;
+    content: ' ';
     top: 0;
     right: 0;
     left: 80%;
@@ -235,8 +235,8 @@
 }
 
 .chess_board .focusSquare.square:before {
-    position:absolute;
-    content:' ';
+    position: absolute;
+    content: ' ';
     bottom: 0;
     left: 0;
     right: 80%;
@@ -246,8 +246,8 @@
     border-bottom-left-radius: 5px;
 }
 .chess_board .focusSquare.square:after {
-    position:absolute;
-    content:' ';
+    position: absolute;
+    content: ' ';
     bottom: 0;
     right: 0;
     left: 80%;
@@ -272,4 +272,10 @@
 }
 .chess_board .dot_square_green {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10.3" height="10.3"><path d="M10.132 5.133c0 2.758-2.236 4.994-4.994 4.994C2.38 10.127.144 7.89.144 5.133.144 2.375 2.38.14 5.138.14c2.758 0 4.994 2.235 4.994 4.993z" fill="#00c800" fill-rule="evenodd" stroke="#000" stroke-width="0.3" stroke-opacity=".3"/></svg>');
+}
+.chess_board .dot_square_green:hover {
+    background-color: rgba(0, 240, 0, .2);
+}
+.chess_board .dot_square_red:hover {
+    background-color: rgba(240, 0, 0, .2);
 }
