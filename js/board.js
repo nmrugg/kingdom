@@ -1057,7 +1057,6 @@ var BOARD = function board_init(el, options)
                 
                 /// Mix.
                 if (power_squares[rank][file] && power_squares[rank][file].color !== color) {
-                    console.log(rank, file, power_squares[rank][file], color)
                     color = "purple";
                 }
                 power_squares[rank][file] = {rank: rank, file: file, color: color};
@@ -1083,25 +1082,8 @@ var BOARD = function board_init(el, options)
                     break;
                 }
             }
-            /*
-            for (file = piece.file + file_change; file >= 0 && file < board_details.files; file += file_change) {
-                for (rank = piece.rank + rank_change; rank >= 0 && rank < board_details.ranks; rank += rank_change) {
-                    add_square(rank, file, piece);
-                    
-                    if (get_piece_from_rank_file(rank, file)) {
-                        break;
-                    }
-                }
-            }
-            */
-            /// get_piece_from_rank_file
         }
-        /*
-        function add_orthogonal_squares_dir(piece, file_change, rank_change)
-        {
-            /// get_piece_from_rank_file
-        }
-        */
+        
         function add_diagonal_squares(piece)
         {
             add_squares_dir(piece,  1,  1);
@@ -1122,7 +1104,6 @@ var BOARD = function board_init(el, options)
         {
             var dir;
             if (!piece.captured) {
-                //console.log(piece)
                 if (piece.type === "p") {
                     if (piece.color === "w") {
                         dir = 1;
@@ -1148,23 +1129,18 @@ var BOARD = function board_init(el, options)
                     add_orthogonal_squares(piece);
                     add_diagonal_squares(piece);
                 } else if (piece.type === "k") {
-                    //kings.push(piece);
                     add_square(piece.rank + 1, piece.file + 1, piece);
                     add_square(piece.rank - 1, piece.file - 1, piece);
                     add_square(piece.rank + 1, piece.file - 1, piece);
                     add_square(piece.rank - 1, piece.file + 1, piece);
-                    
                     add_square(piece.rank + 1, piece.file    , piece);
                     add_square(piece.rank - 1, piece.file    , piece);
                     add_square(piece.rank    , piece.file - 1, piece);
                     add_square(piece.rank    , piece.file + 1, piece);
-                    ///TODO: Save for later.
-                    ///NOTE: King's can't move into check (i.e., not onto a square that's the opposite color).
                 }
             }
         });
         
-        console.log(power_squares);
         power_squares.forEach(function oneach(ranks)
         {
             ranks.forEach(function oneach(data)
