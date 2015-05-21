@@ -1672,7 +1672,9 @@
     
         G.events.attach("eval", function oneval(e)
         {
-            console.log(e)
+            if (debugging) {
+                console.log(e)
+            }
             /// Is this eval for the current position?
             if (e.ply === game_history.length - 1) {
                 if (e.type === "cp") {
