@@ -84,6 +84,13 @@
             transition: none;
 }
 
+.boardArrows {
+    pointer-events: none;
+    position: absolute;
+}
+.boardArrows.waiting {
+    opacity: .4
+}
 .chess_board.waiting .piece {
     cursor: default!important;
 }

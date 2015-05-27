@@ -848,6 +848,7 @@ var BOARD = function board_init(el, options)
         board.el.classList.add("waiting");
         board.el.classList.remove("settingUp");
         board.el.classList.remove("playing");
+        arrow_manager.el.classList.add("waiting");
     }
     
     function play()
@@ -856,6 +857,7 @@ var BOARD = function board_init(el, options)
         board.el.classList.remove("waiting");
         board.el.classList.remove("settingUp");
         board.el.classList.add("playing");
+        arrow_manager.el.classList.remove("waiting");
     }
     
     function enable_setup()
@@ -864,6 +866,7 @@ var BOARD = function board_init(el, options)
         board.el.classList.remove("waiting");
         board.el.classList.remove("playing");
         board.el.classList.add("settingUp");
+        arrow_manager.el.classList.remove("waiting");
     }
     
     function get_piece_from_rank_file(rank, file)
@@ -1370,10 +1373,11 @@ var BOARD = function board_init(el, options)
         
         G.events.attach("board_move", arrow_onmove);
         
-        canvas.style.position = "absolute";
+        canvas.className = "boardArrows";
         ctx = canvas.getContext("2d");
         
         return {
+            el: canvas,
             draw: draw,
             clear: clear,
             delete_arrow: delete_arrow
