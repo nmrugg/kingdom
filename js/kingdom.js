@@ -412,7 +412,7 @@
                     cb();
                 }
             } else {
-                board.set_legal_moves({});
+                board.set_legal_moves(moves);
                 if (board.mode === "play") {
                     /// Was it checkmate?
                     if (moves.checkers.length && !stalemate_by_rules) {
