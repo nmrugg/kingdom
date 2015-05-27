@@ -809,6 +809,7 @@ var BOARD = function board_init(el, options)
         clear_highlights();
         clear_focuses();
         clear_dots();
+        arrow_manager.clear();
     }
     
     function set_board(fen)
@@ -1031,14 +1032,10 @@ var BOARD = function board_init(el, options)
         }
     }
     
-    function focus_checked_king()
+    function focus_checked_king(king)
     {
-        var king;
-        if (legal_moves && legal_moves.checkers && legal_moves.checkers.length) {
-            king = find_king(board.turn);
-            if (king) {
-                focus_square(king.file, king.rank, "red");
-            }
+        if (king) {
+            focus_square(king.file, king.rank, "red");
         }
         board.checked_king = king;
     }
@@ -1158,16 +1155,40 @@ var BOARD = function board_init(el, options)
     function set_legal_moves(moves)
     {
         legal_moves = moves;
-        focus_checked_king();
+        
         if (board.display_lines_of_power) {
             show_lines_of_power();
         }
+        
+        G.events.trigger("board_set_legal_moves", {moves: moves});
     }
     
     function get_legal_moves()
     {
         return legal_moves;
     }
+    
+    function check_highlight(e)
+    {
+        var king;
+        if (legal_moves && legal_moves.checkers && legal_moves.checkers.length) {
+            king = find_king(board.turn);
+            legal_moves.checkers.forEach(function (checker)
+            {
+                var checker_data = get_rank_file_from_str(checker);
+                //draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, "rgba(0, 0, 240, .6)");
+                //console.log(checker_data)
+                //arrow_manager.draw()
+                arrow_manager.draw(checker_data.rank, checker_data.file, king.rank, king.file, "rgba(240, 0, 0, .6)");
+            });
+            //console.log(king)
+        }
+        
+        ///NOTE: This will clear the checked king square if there is no checked king, so it must always be called.
+        focus_checked_king(king);
+    }
+    
+    G.events.attach("board_set_legal_moves", check_highlight);
     
     arrow_manager = (function create_draw_arrow()
     {
@@ -1251,7 +1272,9 @@ var BOARD = function board_init(el, options)
         function draw_arrow(rank1, file1, rank2, file2, color, do_not_add)
         {
             var box1 = squares[rank1][file1].getBoundingClientRect(),
-                box2 = squares[rank2][file2].getBoundingClientRect();
+                box2 = squares[rank2][file2].getBoundingClientRect(),
+                proportion,
+                adjust_height;
             
             if (!do_not_add) {
                 arrows.push({
@@ -1269,9 +1292,19 @@ var BOARD = function board_init(el, options)
                 on_dom = true;
             }
             
+            proportion = (box1.width / 50);
+            
             create_arrow(box1.left + box1.width / 2 - canvas_left, box1.top + box1.height / 2 - canvas_top,
                          box2.left + box2.width / 2 - canvas_left, box2.top + box2.height / 2 - canvas_top,
-                         {fillStyle: color});
+                         {
+                            fillStyle: color,
+                            width:    box1.width / 5,
+                            head_len: box1.width / 1.5,
+                            /*
+                            lineWidth: box1.width / 10,
+                            strokeStyle: "rgba(200,200,200,.4)",
+                            */
+                         });
         }
         
         function clear()
@@ -1325,8 +1358,12 @@ var BOARD = function board_init(el, options)
         function arrow_onmove(e)
         {
             var uci_data = split_uci(e.uci);
-            clear();
-            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, "rgba(0, 0, 240, .6)")
+            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, "rgba(0, 0, 240, .6)");
+        }
+        
+        function draw(rank1, file1, rank2, file2, color)
+        {
+            draw_arrow(rank1, file1, rank2, file2, color)
         }
         
         G.events.attach("board_resize", redraw);
@@ -1337,7 +1374,7 @@ var BOARD = function board_init(el, options)
         ctx = canvas.getContext("2d");
         
         return {
-            draw: draw_arrow,
+            draw: draw,
             clear: clear,
             delete_arrow: delete_arrow
         };
