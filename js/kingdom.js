@@ -1556,7 +1556,6 @@
             clock_els[color].textContent = format_time(board.players[color].time);
         }
         
-    
         function reset_clock(color)
         {
             var player = board.players[color];
@@ -1570,14 +1569,14 @@
         {
             reset_clock("w");
             reset_clock("b");
-        }
+        };
         
         board.onswitch = function onswitch()
         {
             if (timer_on) {
                 tick(board.turn === "w" ? "b" : "w");
             }
-        }
+        };
         
         board.el.parentNode.insertBefore(clock_els.w, board.el);
         board.el.parentNode.insertBefore(clock_els.b, board.el.nextSibling);
@@ -1595,7 +1594,7 @@
             if (clock_els[color]) {
                 clock_els[color].textContent = "--";
             }
-        }
+        };
         
         clock_manager.start_timer = start_timer;
         clock_manager.stop_timer = stop_timer;
@@ -1611,45 +1610,22 @@
         
         function calculate_slope()
         {
-            /// m = change in y-value (y2-y1)
-            ///     change in x-value (x2-x1)
+            /// m = change in y-value (y2 - y1)
+            ///     change in x-value (x2 - x1)
             obj.m = (100 - 0) / (obj.min - obj.max);
         }
         
         calculate_slope();
         
-        //board.el.appendChild(container);
         obj.resize = function ()
         {
             var board_rect = board.el.getBoundingClientRect();
-            //console.log(board_rect)
-            //debugger;
             container.style.top = board_rect.top + "px";
             container.style.bottom = (window.innerHeight - board_rect.bottom) + "px";
             container.style.right = (window.innerWidth - board_rect.left) + "px";
             container.style.left = (board_rect.left - (board_rect.width / 16)) + "px";
-            //console.log(board_rect.width)
         };
         
-        /// max =   0%
-        /// 0   =  50%
-        /// min = 100%
-        /// y=mx+b
-        /// b = 50
-        /// 
-        ///  10 = 0
-        ///   0 = 50
-        /// -10 = 100
-        
-
-        ///
-        
-        ///   10,0
-        ///   0,50
-        /// -10,100
-        ///
-        /// 100 - 0
-        /// -10 - 10
         obj.set_eval = function (value)
         {
             obj.value = Number(value);
@@ -1659,16 +1635,8 @@
         /// Set default.
         obj.set_eval(obj.value);
         
-        /*
-        setTimeout(function ()
-        {
-            obj.set_eval(5);
-        }, 3000);
-        */
-        
         container.appendChild(slider_el);
         board.el.parentNode.insertBefore(container, board.el);
-        
     
         G.events.attach("eval", function oneval(e)
         {
@@ -1687,8 +1655,6 @@
                     }
                 }
             }
-            //{ply: ply, score: score, type: type, depth: depth, pv: pv});
-            //if (
         });
         
         return obj;

@@ -766,18 +766,6 @@ var BOARD = function board_init(el, options)
             
             if (square && (board.mode === "setup" || is_legal_move(uci))) {
                 make_move(board.dragging.piece, square, uci, promoting);
-                /*
-                clear_board_extras();
-                //clear_focuses();
-                //clear_dots();
-                piece_storage = board.dragging.piece;
-                move_piece(board.dragging.piece, square, uci);
-                report_move(uci, promoting, board.dragging.piece, function onreport(finalized_uci)
-                {
-                    ///NOTE: Since this is async, we need to store which piece was moved.
-                    promote_piece(piece_storage, finalized_uci);
-                });
-                */
             } else {
                 /// Snap back.
                 if (board.mode === "setup") {
@@ -1179,12 +1167,8 @@ var BOARD = function board_init(el, options)
             legal_moves.checkers.forEach(function (checker)
             {
                 var checker_data = get_rank_file_from_str(checker);
-                //draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, "rgba(0, 0, 240, .6)");
-                //console.log(checker_data)
-                //arrow_manager.draw()
                 arrow_manager.draw(checker_data.rank, checker_data.file, king.rank, king.file, "rgba(240, 0, 0, .6)");
             });
-            //console.log(king)
         }
         
         ///NOTE: This will clear the checked king square if there is no checked king, so it must always be called.
@@ -1303,10 +1287,8 @@ var BOARD = function board_init(el, options)
                             fillStyle: color,
                             width:    box1.width / 5,
                             head_len: box1.width / 1.5,
-                            /*
-                            lineWidth: box1.width / 10,
-                            strokeStyle: "rgba(200,200,200,.4)",
-                            */
+                         ///lineWidth: box1.width / 10,
+                         ///strokeStyle: "rgba(200,200,200,.4)",
                          });
         }
         
