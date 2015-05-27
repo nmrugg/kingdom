@@ -13,10 +13,13 @@ var BOARD = function board_init(el, options)
         hover_squares,
         pos,
         colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple", "pink"],
+        ///NOTE: These should match the CSS.
+        rgba   = ["rgba(0, 0, 240, .6)", "rgba(240, 0, 0, .6)", "rgba(0, 240, 0, .6)", "rgba(240, 240, 0, .6)", "rgba(0, 240, 240, .6)", "rgba(240, 120, 0, .6)", "rgba(120, 0, 120, .6)", "rgba(240, 0, 240, .6)"],
         cur_color = 0,
         capturing_clicks,
         legal_moves,
-        arrow_manager;
+        arrow_manager,
+        dragging_arrow = {};
     
     function num_to_alpha(num)
     {
@@ -119,23 +122,68 @@ var BOARD = function board_init(el, options)
                 square;
             
             if (e.ctrlKey) {
-                /// Highlight the sqaure.
-                new_color = colors[cur_color];
-                if (is_left_click(e)) {
-                    if (hover_squares[y][x].highlight_color === new_color) {
-                        remove_highlight(x, y);
+                if (!dragging_arrow.drew_arrow) {
+                    /// Highlight the sqaure.
+                    new_color = colors[cur_color];
+                    if (is_left_click(e)) {
+                        if (hover_squares[y][x].highlight_color === new_color) {
+                            remove_highlight(x, y);
+                        } else {
+                            highlight_square(x, y, new_color);
+                        }
                     } else {
-                        highlight_square(x, y, new_color);
+                        remove_highlight(x, y);
+                        e.preventDefault();
                     }
-                } else {
-                    remove_highlight(x, y);
-                    e.preventDefault();
                 }
             } else if (board.clicked_piece) {
                 ///TODO: Make sure the move is valid.
                 /// Move to the square.
                 square = {rank: y, file: x};
                 make_move(board.clicked_piece.piece, square, get_move(board.clicked_piece.piece, square), is_promoting(board.clicked_piece.piece, square));
+            }
+        };
+    }
+    
+    function arrow_start_maker(rank, file)
+    {
+        return function (e)
+        {
+            dragging_arrow.drew_arrow = false;
+            dragging_arrow.start_square = {rank: rank, file: file};
+        };
+    }
+    
+    function arrow_move_maker(rank, file)
+    {
+        function finish_arrow()
+        {
+            delete dragging_arrow.start_square;
+            delete dragging_arrow.cur_square;
+            delete dragging_arrow.number;
+        }
+        
+        return function (e)
+        {
+            if (dragging_arrow.start_square) {
+                if (G.normalize_mouse_buttons(e) === 1) {
+                    if (!dragging_arrow.cur_square || rank !== dragging_arrow.cur_square.rank || file !== dragging_arrow.cur_square.file) {
+                        if (typeof dragging_arrow.number === "number") {
+                            arrow_manager.delete_arrow(dragging_arrow.number);
+                            delete dragging_arrow.cur_square;
+                        }
+                        if (dragging_arrow.start_square.rank !== rank || dragging_arrow.start_square.file !== file) {
+                            dragging_arrow.number = arrow_manager.draw(dragging_arrow.start_square.rank, dragging_arrow.start_square.file, rank, file, rgba[cur_color])
+                            dragging_arrow.cur_square = {rank: rank, file: file};
+                            dragging_arrow.drew_arrow = true;
+                        }
+                    }
+                    if (e.type === "mouseup") {
+                        finish_arrow();
+                    }
+                } else {
+                    finish_arrow();
+                }
             }
         };
     }
@@ -149,6 +197,11 @@ var BOARD = function board_init(el, options)
         el.classList.add("file" + x);
         
         el.addEventListener("click", hover_square_click_maker(x, y));
+        
+        //dragging_arrow_start_square
+        el.addEventListener("mousedown", arrow_start_maker(y, x));
+        el.addEventListener("mousemove", arrow_move_maker(y, x));
+        el.addEventListener("mouseup", arrow_move_maker(y, x));
         
         return el;
     }
@@ -948,6 +1001,7 @@ var BOARD = function board_init(el, options)
                 }
             } else if (e.keyCode === 32) { /// Space
                 clear_highlights();
+                arrow_manager.clear();
             }
         }
     }
@@ -1167,7 +1221,7 @@ var BOARD = function board_init(el, options)
             legal_moves.checkers.forEach(function (checker)
             {
                 var checker_data = get_rank_file_from_str(checker);
-                arrow_manager.draw(checker_data.rank, checker_data.file, king.rank, king.file, "rgba(240, 0, 0, .6)");
+                arrow_manager.draw(checker_data.rank, checker_data.file, king.rank, king.file, rgba[1]);
             });
         }
         
@@ -1290,6 +1344,8 @@ var BOARD = function board_init(el, options)
                          ///lineWidth: box1.width / 10,
                          ///strokeStyle: "rgba(200,200,200,.4)",
                          });
+            
+            return arrows.length - 1;
         }
         
         function clear()
@@ -1343,12 +1399,12 @@ var BOARD = function board_init(el, options)
         function arrow_onmove(e)
         {
             var uci_data = split_uci(e.uci);
-            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, "rgba(0, 0, 240, .6)");
+            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, rgba[0]);
         }
         
         function draw(rank1, file1, rank2, file2, color)
         {
-            draw_arrow(rank1, file1, rank2, file2, color)
+            return draw_arrow(rank1, file1, rank2, file2, color);
         }
         
         G.events.attach("board_resize", redraw);

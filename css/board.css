@@ -186,6 +186,7 @@
 }
 
 
+/* These should match the rgba array. */
 .chess_board .hoverSquare.blue {
     background-color: rgba(0, 0, 240, .6);
 }
