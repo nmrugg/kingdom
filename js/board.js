@@ -1004,6 +1004,10 @@ var BOARD = function board_init(el, options)
                 arrow_manager.clear();
             }
         }
+        if (e.keyCode === 8) {
+            arrow_manager.delete_arrow();
+            e.preventDefault();
+        }
     }
     
     function stop_capturing_clicks()
