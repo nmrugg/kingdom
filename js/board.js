@@ -15,7 +15,8 @@ var BOARD = function board_init(el, options)
         colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple", "pink"],
         cur_color = 0,
         capturing_clicks,
-        legal_moves;
+        legal_moves,
+        arrow_manager;
     
     function num_to_alpha(num)
     {
@@ -263,6 +264,8 @@ var BOARD = function board_init(el, options)
         
         board.el.style.width  = board_details.width  + "px";
         board.el.style.height = board_details.height + "px";
+        
+        G.events.trigger("board_resize");
     }
     
     function make_board_num(num)
@@ -927,6 +930,7 @@ var BOARD = function board_init(el, options)
         board.moves.push(uci);
         switch_turn();
         clear_board_extras();
+        G.events.trigger("board_move", {uci: uci});
     }
     
     function move(uci)
@@ -1056,7 +1060,7 @@ var BOARD = function board_init(el, options)
                 color = piece.color === "w" ? "red" : "blue";
                 
                 /// Mix.
-                if (power_squares[rank][file] && power_squares[rank][file].color !== color) {
+                if (power_squares[rank][file] && power_squares[rank][file].color !== color) {   
                     color = "purple";
                 }
                 power_squares[rank][file] = {rank: rank, file: file, color: color};
@@ -1075,6 +1079,7 @@ var BOARD = function board_init(el, options)
                 if (file >= 0 && file < board_details.files && rank >= 0 && rank < board_details.ranks) {
                     add_square(rank, file, piece);
                     
+                    /// Stop at a piece (either friend or foe)
                     if (get_piece_from_rank_file(rank, file)) {
                         break;
                     }
@@ -1150,66 +1155,193 @@ var BOARD = function board_init(el, options)
         });
     }
     
-    function bad_show_checked_lines_of_power()
-    {
-        var power_squares = [];
-        
-        if (legal_moves && legal_moves.uci) {
-            board.pieces.forEach(function oneach(piece)
-            {
-                var start_sq = get_piece_start_square(piece);
-                
-                ///TODO PAWNS (castling? doesn't really matter since rooks always attack)
-                legal_moves.uci.forEach(function oneach(move, i)
-                {
-                    var move_data,
-                        color = piece.color === "w" ? "red" : "blue";
-                    
-                    if (move.indexOf(start_sq) === 0) {
-                        move_data = get_rank_file_from_str(move.substr(2));
-                        if (!power_squares[move_data.rank]) {
-                            power_squares[move_data.rank] = [];
-                        }
-                        /// Mix.
-                        if (power_squares[move_data.rank][move_data.file] && power_squares[move_data.rank][move_data.file] !== color) {
-                            color = "purple";
-                        }
-                        power_squares[move_data.rank][move_data.file] = {color: color, rank: move_data.rank, file: move_data.file};
-                        /*
-                        ///NOTE: We can't use get_piece_from_rank_file(move_data.rank, move_data.file) because it won't find en passant.
-                        if (legal_moves.san[i].indexOf("x") === -1) {
-                            color = "green";
-                        } else {
-                            color = "red"
-                        }
-                        add_dot(move_data.file, move_data.rank, color);
-                        add_clickabe_square(move_data);
-                        */
-                    }
-                });
-            });
-        }
-        //console.log(power_squares)
-        power_squares.forEach(function oneach(ranks)
-        {
-            ranks.forEach(function oneach(data)
-            {
-                highlight_square(data.file, data.rank, data.color);
-            });
-        });
-    }
-    
     function set_legal_moves(moves)
     {
         legal_moves = moves;
         focus_checked_king();
-        show_lines_of_power();
+        if (board.display_lines_of_power) {
+            show_lines_of_power();
+        }
     }
     
     function get_legal_moves()
     {
         return legal_moves;
     }
+    
+    arrow_manager = (function create_draw_arrow()
+    {
+        var canvas = document.createElement("canvas"),
+            ctx,
+            on_dom,
+            arrows = [],
+            canvas_left,
+            canvas_top;
+        
+        function get_intersect(x1, y1, x2, y2, x3, y3, x4, y4)
+        {
+            /// See https://en.wikipedia.org/wiki/Line–line_intersection.
+            return {
+                x: ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)),
+                y: ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4))
+            };
+        }
+        
+        function rotate_point(point_x, point_y, origin_x, origin_y, angle) {
+            return {
+                x: Math.cos(angle) * (point_x - origin_x) - Math.sin(angle) * (point_y - origin_y) + origin_x,
+                y: Math.sin(angle) * (point_x - origin_x) + Math.cos(angle) * (point_y - origin_y) + origin_y
+            };
+        }
+        
+        function create_arrow(x1, y1, x2, y2, options)
+        {
+            options = options || {};
+            
+            options.width = options.width || 12;
+            options.fillStyle = options.fillStyle || "rgb(0,0,200)";
+            options.head_len = options.head_len || 30;
+            
+            if (options.head_len < options.width + 1) {
+                options.head_len = options.width + 1;
+            }
+            options.head_angle = options.head_angle || Math.PI / 6;
+            
+            var angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            var ang_neg = angle - options.head_angle;
+            var ang_pos = angle + options.head_angle;
+            var tri_point1 = {
+                x: x2 - options.head_len * Math.cos(ang_neg),
+                y: y2 - options.head_len * Math.sin(ang_neg)
+            };
+            var tri_point2 = {
+                x: x2 - options.head_len * Math.cos(ang_pos),
+                y: y2 - options.head_len * Math.sin(ang_pos)
+            };
+            
+            /// Since the line has a width, we need to create a new line by moving the point half of the width and then rotating it to match the line.
+            var p1 = rotate_point(x1, y1 + options.width / 2, x1, y1, angle);
+            var p2 = rotate_point(x2, y2 + options.width / 2, x2, y2, angle);
+            
+            /// Find the point at which the line will reach the bottom of the triangle.
+            var int2 = get_intersect(p1.x, p1.y, p2.x, p2.y, tri_point1.x, tri_point1.y, tri_point2.x, tri_point2.y);
+            
+            var p3 = rotate_point(x1, y1 - options.width / 2, x1, y1, angle);
+            var p4 = rotate_point(x2, y2 - options.width / 2, x2, y2, angle);
+            var int3 = get_intersect(p3.x, p3.y, p4.x, p4.y, tri_point1.x, tri_point1.y, tri_point2.x, tri_point2.y);
+            
+            ctx.fillStyle = options.fillStyle;
+            ctx.beginPath();
+            ctx.arc(x1, y1, options.width / 2, angle - Math.PI / 2, angle - Math.PI * 1.5, true);
+            ctx.lineTo(int2.x, int2.y);
+            ctx.lineTo(tri_point1.x, tri_point1.y);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(tri_point2.x, tri_point2.y);
+            ctx.lineTo(int3.x, int3.y);
+            ctx.closePath();
+            if (options.lineWidth) {
+                ctx.lineWidth = options.lineWidth;
+                ctx.strokeStyle = options.strokeStyle;
+                ctx.stroke();
+            }
+            ctx.fill();
+        }
+        
+        function draw_arrow(rank1, file1, rank2, file2, color, do_not_add)
+        {
+            var box1 = squares[rank1][file1].getBoundingClientRect(),
+                box2 = squares[rank2][file2].getBoundingClientRect();
+            
+            if (!do_not_add) {
+                arrows.push({
+                    rank1: rank1,
+                    file1: file1,
+                    rank2: rank2,
+                    file2: file2,
+                    color: color,
+                });
+            }
+            
+            if (!on_dom) {
+                set_size();
+                document.body.appendChild(canvas);
+                on_dom = true;
+            }
+            
+            create_arrow(box1.left + box1.width / 2 - canvas_left, box1.top + box1.height / 2 - canvas_top,
+                         box2.left + box2.width / 2 - canvas_left, box2.top + box2.height / 2 - canvas_top,
+                         {fillStyle: color});
+        }
+        
+        function clear()
+        {
+            arrows = [];
+            set_size();
+            if (on_dom) {
+                if (canvas.parentNode) {
+                    canvas.parentNode.removeChild(canvas);
+                }
+                on_dom = false;
+            }
+        }
+        
+        function draw_all_arrows()
+        {
+            arrows.forEach(function (arrow)
+            {
+                draw_arrow(arrow.rank1, arrow.file1, arrow.rank2, arrow.file2, arrow.color, true);
+            });
+        }
+        
+        function set_size()
+        {
+            var box = board.el.getBoundingClientRect();
+            canvas_left = box.left;
+            canvas_top = box.top;
+            canvas.width = box.width;
+            canvas.height = box.height;
+            canvas.style.top = canvas_top + "px";
+            canvas.style.left = canvas_left + "px";
+        }
+        
+        function redraw()
+        {
+            set_size();
+            draw_all_arrows();
+        }
+        
+        function delete_arrow(which)
+        {
+            if (!which) {
+                which = arrows.length - 1;
+            }
+            if (arrows[which]) {
+                G.array_remove(arrows, which);
+                redraw();
+            }
+        }
+        
+        function arrow_onmove(e)
+        {
+            var uci_data = split_uci(e.uci);
+            clear();
+            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, "rgba(0, 0, 240, .6)")
+        }
+        
+        G.events.attach("board_resize", redraw);
+        
+        G.events.attach("board_move", arrow_onmove);
+        
+        canvas.style.position = "absolute";
+        ctx = canvas.getContext("2d");
+        
+        return {
+            draw: draw_arrow,
+            clear: clear,
+            delete_arrow: delete_arrow
+        };
+    }());
     
     board = {
         pieces: [],
@@ -1239,10 +1371,11 @@ var BOARD = function board_init(el, options)
         highlight_square: highlight_square,
         set_legal_moves: set_legal_moves,
         get_legal_moves: get_legal_moves,
-    /// legal_move{}
+        show_lines_of_power: show_lines_of_power,
     /// onmove()
     /// onswitch()
     /// turn
+    /// display_lines_of_power
     };
     
     options = options || {};
