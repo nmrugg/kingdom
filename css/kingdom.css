@@ -91,3 +91,7 @@ html, body {
     transition: height 300ms;
     -webkit-transition: height 600ms;
 }
+
+.ratingCanvas {
+    position: absolute;
+}

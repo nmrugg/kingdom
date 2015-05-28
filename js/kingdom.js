@@ -1602,15 +1602,51 @@
     
     rating_slider = function make_rating_slider()
     {
-        var container = G.cde("div", {c: "ratingContainer"}),
-            slider_el = G.cde("div", {c: "ratingSlider"}),
-            obj = {max: 1000, min: -1000, value: 0};
+        var container = G.cde("div", {c: "ratingContainer"});
+        var slider_el = G.cde("div", {c: "ratingSlider"});
+        var canvas = G.cde("canvas", {c: "ratingCanvas"});
+        var obj = {max: 1000, min: -1000, value: 0};
+        var ctx = canvas.getContext("2d");
         
         function calculate_slope()
         {
             /// m = change in y-value (y2 - y1)
             ///     change in x-value (x2 - x1)
             obj.m = (100 - 0) / (obj.min - obj.max);
+        }
+        
+        function draw_marks()
+        {
+            var height = canvas.height,
+                width = canvas.width,
+                pos,
+                median,
+                line_y;
+            
+            median = height / 2;
+            /// Draw median.
+            ctx.beginPath();
+            ctx.lineWidth = height / 150;
+            ctx.strokeStyle = "rgba(200,0,0,.9)";
+            ctx.moveTo(0, median);
+            ctx.lineTo(width, median);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.lineWidth = height / 500;
+            ctx.strokeStyle = "rgba(128,128,128,.9)";
+            
+            for (pos = (obj.min - obj.min % 100); pos < obj.max; pos += 100) {
+                if (pos !== 0) {
+                    line_y = median - ((pos / obj.max) * median);
+                    ctx.moveTo(0, line_y);
+                    ctx.lineTo(width / 4, line_y);
+                    ctx.moveTo(width - width / 4, line_y);
+                    ctx.lineTo(width, line_y);
+                }
+            }
+            
+            ctx.stroke();
         }
         
         calculate_slope();
@@ -1622,6 +1658,11 @@
             container.style.bottom = (window.innerHeight - board_rect.bottom) + "px";
             container.style.right = (window.innerWidth - board_rect.left) + "px";
             container.style.left = (board_rect.left - (board_rect.width / 16)) + "px";
+            ///NOTE: clientWidth/clientHeight gets the width without the board.
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            draw_marks();
         };
         
         obj.set_eval = function (value)
@@ -1633,7 +1674,10 @@
         /// Set default.
         obj.set_eval(obj.value);
         
+        container.appendChild(canvas);
+        
         container.appendChild(slider_el);
+        
         board.el.parentNode.insertBefore(container, board.el);
     
         G.events.attach("eval", function oneval(e)
