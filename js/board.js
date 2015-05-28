@@ -198,7 +198,6 @@ var BOARD = function board_init(el, options)
         
         el.addEventListener("click", hover_square_click_maker(x, y));
         
-        //dragging_arrow_start_square
         el.addEventListener("mousedown", arrow_start_maker(y, x));
         el.addEventListener("mousemove", arrow_move_maker(y, x));
         el.addEventListener("mouseup", arrow_move_maker(y, x));
@@ -986,6 +985,8 @@ var BOARD = function board_init(el, options)
     
     function onkeydown(e)
     {
+        var target = e.target || e.srcElement || e.originalTarget;
+        
         if (e.ctrlKey) {
             board.el.classList.add("catchClicks");
             capturing_clicks = true;
@@ -1001,10 +1002,11 @@ var BOARD = function board_init(el, options)
                 }
             } else if (e.keyCode === 32) { /// Space
                 clear_highlights();
-                arrow_manager.clear();
+                arrow_manager.clear(true); /// Only clear lines drawn by the user.
             }
         }
-        if (e.keyCode === 8) {
+        
+        if (e.keyCode === 8 && (!target || target.tagName === "BODY")) { /// backspace
             arrow_manager.delete_arrow();
             e.preventDefault();
         }
@@ -1225,7 +1227,7 @@ var BOARD = function board_init(el, options)
             legal_moves.checkers.forEach(function (checker)
             {
                 var checker_data = get_rank_file_from_str(checker);
-                arrow_manager.draw(checker_data.rank, checker_data.file, king.rank, king.file, rgba[1]);
+                arrow_manager.draw(checker_data.rank, checker_data.file, king.rank, king.file, rgba[1], true);
             });
         }
         
@@ -1314,7 +1316,7 @@ var BOARD = function board_init(el, options)
             ctx.fill();
         }
         
-        function draw_arrow(rank1, file1, rank2, file2, color, do_not_add)
+        function draw_arrow(rank1, file1, rank2, file2, color, auto, do_not_add)
         {
             var box1 = squares[rank1][file1].getBoundingClientRect(),
                 box2 = squares[rank2][file2].getBoundingClientRect(),
@@ -1328,6 +1330,7 @@ var BOARD = function board_init(el, options)
                     rank2: rank2,
                     file2: file2,
                     color: color,
+                    auto: auto,
                 });
             }
             
@@ -1352,11 +1355,9 @@ var BOARD = function board_init(el, options)
             return arrows.length - 1;
         }
         
-        function clear()
+        function remove_if_empty()
         {
-            arrows = [];
-            set_size();
-            if (on_dom) {
+            if (on_dom && !arrows.length) {
                 if (canvas.parentNode) {
                     canvas.parentNode.removeChild(canvas);
                 }
@@ -1364,11 +1365,34 @@ var BOARD = function board_init(el, options)
             }
         }
         
+        function clear(keep_auto_arrows)
+        {
+            var i;
+            
+            /// Sometimes, we don't want to remove the arrows for last move and checkers.
+            if (keep_auto_arrows) {
+                for (i = arrows.length - 1; i >= 0; i -= 1) {
+                    if (!arrows[i].auto) {
+                        G.array_remove(arrows, i);
+                    }
+                }
+            } else {
+                arrows = [];
+            }
+            set_size();
+            
+            if (arrows.length) {
+                draw_all_arrows();
+            } else {
+                remove_if_empty();
+            }
+        }
+        
         function draw_all_arrows()
         {
             arrows.forEach(function (arrow)
             {
-                draw_arrow(arrow.rank1, arrow.file1, arrow.rank2, arrow.file2, arrow.color, true);
+                draw_arrow(arrow.rank1, arrow.file1, arrow.rank2, arrow.file2, arrow.color, arrow.auto, true);
             });
         }
         
@@ -1393,22 +1417,37 @@ var BOARD = function board_init(el, options)
         {
             if (!which) {
                 which = arrows.length - 1;
+                for (;;) {
+                    /// We are looking for the last arrow drawn by the user.
+                    if (arrows[which] && !arrows[which].auto) {
+                        break;
+                    }
+                    
+                    which -= 1;
+                    
+                    if (which < 0) {
+                        return;
+                    }
+                }
             }
+            
             if (arrows[which]) {
                 G.array_remove(arrows, which);
                 redraw();
             }
+            
+            remove_if_empty();
         }
         
         function arrow_onmove(e)
         {
             var uci_data = split_uci(e.uci);
-            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, rgba[0]);
+            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, rgba[0], true);
         }
         
-        function draw(rank1, file1, rank2, file2, color)
+        function draw(rank1, file1, rank2, file2, color, auto)
         {
-            return draw_arrow(rank1, file1, rank2, file2, color);
+            return draw_arrow(rank1, file1, rank2, file2, color, auto);
         }
         
         G.events.attach("board_resize", redraw);
