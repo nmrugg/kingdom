@@ -1244,7 +1244,8 @@ var BOARD = function board_init(el, options)
             on_dom,
             arrows = [],
             canvas_left,
-            canvas_top;
+            canvas_top,
+            remove_timer;
         
         function get_intersect(x1, y1, x2, y2, x3, y3, x4, y4)
         {
@@ -1357,12 +1358,18 @@ var BOARD = function board_init(el, options)
         
         function remove_if_empty()
         {
-            if (on_dom && !arrows.length) {
-                if (canvas.parentNode) {
-                    canvas.parentNode.removeChild(canvas);
+            clearTimeout(remove_timer);
+            
+            /// Since we often draw another arrow quickly, there's no need to remove it right away.
+            remove_timer = setTimeout(function ()
+            {
+                if (on_dom && !arrows.length) {
+                    if (canvas.parentNode) {
+                        canvas.parentNode.removeChild(canvas);
+                    }
+                    on_dom = false;
                 }
-                on_dom = false;
-            }
+            }, 2000);
         }
         
         function clear(keep_auto_arrows)
