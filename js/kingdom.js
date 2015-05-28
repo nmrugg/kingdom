@@ -22,7 +22,7 @@
         legal_move_engine,
         cur_pos_cmd,
         game_history,
-        eval_depth = 6;
+        eval_depth = 8;
     
     function error(str)
     {
