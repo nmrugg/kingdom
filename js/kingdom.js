@@ -413,7 +413,7 @@
                 }
             } else {
                 board.set_legal_moves(moves);
-                if (board.mode === "play") {
+                if (board.get_mode() === "play") {
                     /// Was it checkmate?
                     if (moves.checkers.length && !stalemate_by_rules) {
                         alert((board.turn === "b" ? "White" : "Black") + " wins!\n" + (board.turn === "b" ? "Black" : "White") + " is checkmated!");
@@ -543,7 +543,7 @@
             pos,
             legal_moves = board.get_legal_moves();
         
-        if (board.mode !== "play") {
+        if (board.get_mode() !== "play") {
             return;
         }
         
@@ -581,7 +581,7 @@
         set_legal_moves(function onset()
         {
             tell_engine_to_move();
-            if (board.mode === "play") {
+            if (board.get_mode() === "play") {
                 clock_manager.start_timer();
             }
         });
@@ -626,7 +626,7 @@
             depth,
             player = board.players[board.turn];
         
-        if (board.mode !== "play") {
+        if (board.get_mode() !== "play") {
             return;
         }
         
@@ -853,7 +853,7 @@
     
     function start_new_game()
     {
-        var dont_reset = board.mode === "setup",
+        var dont_reset = board.get_mode() === "setup",
             stop_new_game;
         
         show_loading();
@@ -1007,7 +1007,7 @@
                         /// Set the AI level if not already.
                         player.set_level(player.level);
                         
-                        if (board.mode === "play") {
+                        if (board.get_mode() === "play") {
                             set_cur_pos_cmd();
                             tell_engine_to_move();
                         }
@@ -1378,7 +1378,7 @@
         {
             evaler.send("isready", function onready()
             {
-                if (board.mode === "wait") {
+                if (board.get_mode() === "wait") {
                     start_new_game();
                 }
             });

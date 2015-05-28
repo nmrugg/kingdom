@@ -19,7 +19,8 @@ var BOARD = function board_init(el, options)
         capturing_clicks,
         legal_moves,
         arrow_manager,
-        dragging_arrow = {};
+        dragging_arrow = {},
+        mode = "setup";
     
     function num_to_alpha(num)
     {
@@ -463,7 +464,7 @@ var BOARD = function board_init(el, options)
     
     function is_piece_moveable(piece)
     {
-        return board.mode === "setup" || (board.mode === "play" && board.turn === piece.color && board.players[board.turn].type === "human");
+        return board.get_mode() === "setup" || (board.get_mode() === "play" && board.turn === piece.color && board.players[board.turn].type === "human");
     }
     
     function is_left_click(e)
@@ -609,7 +610,7 @@ var BOARD = function board_init(el, options)
         });
         
         /// In play mode, we can go with the color; in setup mode, we need to get the color from the piece.
-        icon.style.backgroundImage = get_piece_img({color: board.mode === "play" ? board.turn : piece.color, type: which});
+        icon.style.backgroundImage = get_piece_img({color: board.get_mode() === "play" ? board.turn : piece.color, type: which});
         
         icon.classList.add("promotion_icon");
         
@@ -620,7 +621,7 @@ var BOARD = function board_init(el, options)
     {
         var mod_win = document.createElement("div"),
             text_el = document.createElement("div"),
-            old_mode = board.mode;
+            old_mode = board.get_mode();
         
         mod_win.classList.add("board_modular_window");
         
@@ -632,7 +633,7 @@ var BOARD = function board_init(el, options)
         
         function onselect(which)
         {
-            board.mode = old_mode;
+            board.set_mode(old_mode)
             close_window();
             cb(which);
         }
@@ -648,7 +649,7 @@ var BOARD = function board_init(el, options)
         mod_win.appendChild(create_promotion_icon("n", piece, onselect));
         
         document.body.appendChild(mod_win);
-        board.mode = "waiting_for_modular_window";
+        board.set_mode("waiting_for_modular_window")
         board.modular_window_close = close_window;
     }
     
@@ -659,7 +660,7 @@ var BOARD = function board_init(el, options)
         {
             legal_moves = null;
             
-            if (board.mode === "play" && board.onmove) {
+            if (board.get_mode() === "play" && board.onmove) {
                 track_move(uci);
                 board.onmove(uci);
             }
@@ -728,7 +729,7 @@ var BOARD = function board_init(el, options)
         ///NOTE: This does not find en passant captures. See below.
         captured_piece = get_piece_from_rank_file(square.rank, square.file);
         
-        if (board.mode === "play") {
+        if (board.get_mode() === "play") {
             /// Indicate that the board has been changed; it is not in the inital starting position.
             board.messy = true;
             
@@ -749,7 +750,7 @@ var BOARD = function board_init(el, options)
                 rook = get_piece_from_rank_file(rook_rank, 0);
                 set_piece_pos(rook, {rank: rook_rank, file: 3});
             }
-        } else if (board.mode === "setup" && captured_piece) {
+        } else if (board.get_mode() === "setup" && captured_piece) {
             /// The pieces should swap places.
             set_piece_pos(captured_piece, piece);
             
@@ -816,11 +817,11 @@ var BOARD = function board_init(el, options)
             
             uci = get_move(board.dragging.piece, square);
             
-            if (square && (board.mode === "setup" || is_legal_move(uci))) {
+            if (square && (board.get_mode() === "setup" || is_legal_move(uci))) {
                 make_move(board.dragging.piece, square, uci, promoting);
             } else {
                 /// Snap back.
-                if (board.mode === "setup") {
+                if (board.get_mode() === "setup") {
                     remove_piece(board.dragging.piece);
                     /// We need to remove "dragging" to make the transitions work again.
                     board.dragging.piece.el.classList.remove("dragging");
@@ -884,7 +885,7 @@ var BOARD = function board_init(el, options)
     
     function wait()
     {
-        board.mode = "wait";
+        board.set_mode("wait")
         board.el.classList.add("waiting");
         board.el.classList.remove("settingUp");
         board.el.classList.remove("playing");
@@ -893,7 +894,7 @@ var BOARD = function board_init(el, options)
     
     function play()
     {
-        board.mode = "play";
+        board.set_mode("play")
         board.el.classList.remove("waiting");
         board.el.classList.remove("settingUp");
         board.el.classList.add("playing");
@@ -902,7 +903,7 @@ var BOARD = function board_init(el, options)
     
     function enable_setup()
     {
-        board.mode = "setup";
+        board.set_mode("setup")
         board.el.classList.remove("waiting");
         board.el.classList.remove("playing");
         board.el.classList.add("settingUp");
@@ -1472,11 +1473,29 @@ var BOARD = function board_init(el, options)
         };
     }());
     
+    function get_mode()
+    {
+        return mode;
+    }
+    
+    function set_mode(new_mode)
+    {
+        var old_mode = mode;
+        mode = new_mode;
+        G.events.trigger("board_mode_change", {old_move: old_mode, mode: new_mode});
+    }
+    
+    function monitor_mode_change(e)
+    {
+        if (e.mode === "setup") {
+            clear_board_extras();
+        }
+    }
+    
     board = {
         pieces: [],
         size_board: size_board,
         theme: "default",
-        mode: "setup",
         wait: wait,
         play: play,
         enable_setup: enable_setup,
@@ -1501,11 +1520,15 @@ var BOARD = function board_init(el, options)
         set_legal_moves: set_legal_moves,
         get_legal_moves: get_legal_moves,
         show_lines_of_power: show_lines_of_power,
+        get_mode: get_mode,
+        set_mode: set_mode,
     /// onmove()
     /// onswitch()
     /// turn
     /// display_lines_of_power
     };
+    
+    G.events.attach("board_mode_change", monitor_mode_change);
     
     options = options || {};
     
