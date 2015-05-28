@@ -507,17 +507,19 @@ var BOARD = function board_init(el, options)
                 e.preventDefault();
             }
             
-            if (board.clicked_piece && board.clicked_piece.piece) {
-                remove_square_focus(board.clicked_piece.piece.file, board.clicked_piece.piece.rank);
-                clear_dots();
-                /// If the king was previously selected, we want to refocus it.
-                if (board.checked_king) {
-                    focus_square(board.checked_king.file, board.checked_king.rank, "red");
+            if (board.get_mode() === "play") {
+                if (board.clicked_piece && board.clicked_piece.piece) {
+                    remove_square_focus(board.clicked_piece.piece.file, board.clicked_piece.piece.rank);
+                    clear_dots();
+                    /// If the king was previously selected, we want to refocus it.
+                    if (board.checked_king) {
+                        focus_square(board.checked_king.file, board.checked_king.rank, "red");
+                    }
                 }
-            }
-            
-            if (is_piece_moveable(piece)) {
-                focus_piece_for_moving(piece);
+                
+                if (is_piece_moveable(piece)) {
+                    focus_piece_for_moving(piece);
+                }
             }
         }
         
