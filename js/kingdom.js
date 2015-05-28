@@ -1372,23 +1372,7 @@
         
         board.onmove = on_human_move;
         
-        //engine = load_engine();
         evaler = load_engine();
-        
-        evaler.stream = function (line)
-        {
-            /*
-            if (line.substr(0, 4) === "info") {
-                player1_el.textContent = line;
-            }
-            */
-            if (debugging) {
-                console.log(line);
-            }
-        }
-        
-        //board.players.b.type = "human";
-        //board.players.w.type = "ai";
         
         evaler.send("uci", function onuci(str)
         {
@@ -1657,6 +1641,7 @@
             if (debugging) {
                 console.log(e)
             }
+            
             /// Is this eval for the current position?
             if (e.ply === game_history.length - 1) {
                 if (e.type === "cp") {
