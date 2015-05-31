@@ -19,5 +19,5 @@ cp -f /tmp/git-gh-pages-TMP/girdle.js ./js/ && \
 rm -R /tmp/git-gh-pages-TMP/ && \
 git add . && \
 git commit -m "Syncing gh-pages" && \
-git push origin gh-pages && \
+git push origin gh-pages
 git checkout master
