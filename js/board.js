@@ -150,8 +150,10 @@ var BOARD = function board_init(el, options)
     {
         return function (e)
         {
-            dragging_arrow.drew_arrow = false;
-            dragging_arrow.start_square = {rank: rank, file: file};
+            if (e.ctrlKey) {
+                dragging_arrow.drew_arrow = false;
+                dragging_arrow.start_square = {rank: rank, file: file};
+            }
         };
     }
     
