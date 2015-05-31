@@ -13,7 +13,8 @@ git checkout gh-pages && \
 cp -r /tmp/git-gh-pages-TMP/css ./ && \
 cp -r /tmp/git-gh-pages-TMP/img ./ && \
 cp -r /tmp/git-gh-pages-TMP/js ./ && \
-cp -r /tmp/git-gh-pages-TMP/node_modules/girdle ./ && \
+mkdir -p ./node_modules/ && \
+cp -r /tmp/git-gh-pages-TMP/node_modules/girdle ./node_modules/ && \
 cp /tmp/git-gh-pages-TMP/index.html ./ && \
 cp /tmp/git-gh-pages-TMP/favicon.ico ./ && \
 rm -R /tmp/git-gh-pages-TMP/ && \
