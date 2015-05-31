@@ -15,6 +15,7 @@ cp -r /tmp/git-gh-pages-TMP/img ./ && \
 cp -r /tmp/git-gh-pages-TMP/js ./ && \
 cp /tmp/git-gh-pages-TMP/index.html ./ && \
 cp /tmp/git-gh-pages-TMP/favicon.ico ./ && \
+rm ./js/girdle.js && \
 cp -f /tmp/git-gh-pages-TMP/girdle.js ./js/ && \
 rm -R /tmp/git-gh-pages-TMP/ && \
 git add . && \
