@@ -22,7 +22,9 @@
         legal_move_engine,
         cur_pos_cmd,
         game_history,
-        eval_depth = 8;
+        eval_depth = 8,
+        rating_font_style = "Impact,monospace,mono,sans-serif",
+        font_fit;
     
     function error(str)
     {
@@ -1385,6 +1387,8 @@
         });
     }
     
+    font_fit = FONT_FIT({fontFamily: rating_font_style});
+    
     window.addEventListener("keydown", function catch_key(e)
     {
         if (e.keyCode === 113) { /// F2
@@ -1619,9 +1623,12 @@
         {
             var height = canvas.height,
                 width = canvas.width,
+                qrt_width,
                 pos,
                 median,
-                line_y;
+                line_y,
+                font_size,
+                text;
             
             median = height / 2;
             /// Draw median.
@@ -1634,15 +1641,21 @@
             
             ctx.beginPath();
             ctx.lineWidth = height / 500;
-            ctx.strokeStyle = "rgba(128,128,128,.9)";
+            ctx.fillStyle = ctx.strokeStyle = "rgba(128,128,128,.6)";
+            ctx.textAlign = "center";
+            qrt_width = width / 4;
             
-            for (pos = (obj.min - obj.min % 100); pos < obj.max; pos += 100) {
+            for (pos = ((obj.min + 1) - (obj.min + 1) % 100); pos < obj.max; pos += 100) {
                 if (pos !== 0) {
+                    text = String(pos / 100);
+                    font_size = font_fit.fit(text, {w: width / 2, h: width / 2});
+                    ctx.font = font_size + "px " + rating_font_style;
                     line_y = median - ((pos / obj.max) * median);
                     ctx.moveTo(0, line_y);
-                    ctx.lineTo(width / 4, line_y);
-                    ctx.moveTo(width - width / 4, line_y);
+                    ctx.lineTo(qrt_width, line_y);
+                    ctx.moveTo(width - qrt_width, line_y);
                     ctx.lineTo(width, line_y);
+                    ctx.fillText(text, width / 2 - 1, line_y + qrt_width / 2);
                 }
             }
             
