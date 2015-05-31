@@ -10,7 +10,17 @@ var BOARD = function board_init(el, options)
             files: 8,
         },
         squares,
-        pos;
+        hover_squares,
+        pos,
+        colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple", "pink"],
+        ///NOTE: These should match the CSS.
+        rgba   = ["rgba(0, 0, 240, .6)", "rgba(240, 0, 0, .6)", "rgba(0, 240, 0, .6)", "rgba(240, 240, 0, .6)", "rgba(0, 240, 240, .6)", "rgba(240, 120, 0, .6)", "rgba(120, 0, 120, .6)", "rgba(240, 0, 240, .6)"],
+        cur_color = 0,
+        capturing_clicks,
+        legal_moves,
+        arrow_manager,
+        dragging_arrow = {},
+        mode = "setup";
     
     function num_to_alpha(num)
     {
@@ -40,6 +50,241 @@ var BOARD = function board_init(el, options)
         //return "6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39";
     }
     
+    function remove_square_focus(x, y)
+    {
+        if (squares[y][x].focus_color) {
+            squares[y][x].classList.remove("focus_square_" + squares[y][x].focus_color);
+            squares[y][x].classList.remove("focusSquare");
+            delete squares[y][x].focus_color;
+        }
+    }
+    
+    function focus_square(x, y, color)
+    {
+        remove_square_focus(x, y);
+        if (color && colors.indexOf(color) > -1) {
+            squares[y][x].focus_color = color;
+            squares[y][x].classList.add("focus_square_" + color);
+            squares[y][x].classList.add("focusSquare");
+        }
+    }
+    
+    function clear_focuses()
+    {
+        delete board.clicked_piece;
+        squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_square_focus(x, y);
+            });
+        });
+    }
+    
+    function remove_highlight(x, y)
+    {
+        if (hover_squares[y][x].highlight_color) {
+            hover_squares[y][x].classList.remove(hover_squares[y][x].highlight_color);
+            delete hover_squares[y][x].highlight_color;
+        }
+    }
+    
+    function highlight_square(x, y, color)
+    {
+        remove_highlight(x, y);
+        if (color && colors.indexOf(color) > -1) {
+            hover_squares[y][x].highlight_color = color;
+            hover_squares[y][x].classList.add(color);
+        }
+    }
+    
+    function clear_highlights()
+    {
+        hover_squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_highlight(x, y);
+            });
+        });
+    }
+    
+    /**
+     * Ctrl click to set/remove colors.
+     * Ctrl Left/Right to change colors.
+     * Ctrl Non-left click to (only/always) remove colors.
+     * Ctrl Space to clear board of highlights.
+     */
+    function hover_square_click_maker(x, y)
+    {
+        return function (e)
+        {
+            var new_color,
+                square;
+            
+            if (e.ctrlKey) {
+                if (!dragging_arrow.drew_arrow) {
+                    /// Highlight the sqaure.
+                    new_color = colors[cur_color];
+                    if (is_left_click(e)) {
+                        if (hover_squares[y][x].highlight_color === new_color) {
+                            remove_highlight(x, y);
+                        } else {
+                            highlight_square(x, y, new_color);
+                        }
+                    } else {
+                        remove_highlight(x, y);
+                        e.preventDefault();
+                    }
+                }
+            } else if (board.clicked_piece) {
+                ///TODO: Make sure the move is valid.
+                /// Move to the square.
+                square = {rank: y, file: x};
+                make_move(board.clicked_piece.piece, square, get_move(board.clicked_piece.piece, square), is_promoting(board.clicked_piece.piece, square));
+            }
+        };
+    }
+    
+    function arrow_start_maker(rank, file)
+    {
+        return function (e)
+        {
+            if (e.ctrlKey) {
+                dragging_arrow.drew_arrow = false;
+                dragging_arrow.start_square = {rank: rank, file: file};
+            }
+        };
+    }
+    
+    function arrow_move_maker(rank, file)
+    {
+        function finish_arrow()
+        {
+            delete dragging_arrow.start_square;
+            delete dragging_arrow.cur_square;
+            delete dragging_arrow.number;
+        }
+        
+        return function (e)
+        {
+            if (dragging_arrow.start_square) {
+                if (G.normalize_mouse_buttons(e) === 1) {
+                    if (!dragging_arrow.cur_square || rank !== dragging_arrow.cur_square.rank || file !== dragging_arrow.cur_square.file) {
+                        if (typeof dragging_arrow.number === "number") {
+                            arrow_manager.delete_arrow(dragging_arrow.number);
+                            delete dragging_arrow.cur_square;
+                        }
+                        if (dragging_arrow.start_square.rank !== rank || dragging_arrow.start_square.file !== file) {
+                            dragging_arrow.number = arrow_manager.draw(dragging_arrow.start_square.rank, dragging_arrow.start_square.file, rank, file, rgba[cur_color])
+                            dragging_arrow.cur_square = {rank: rank, file: file};
+                            dragging_arrow.drew_arrow = true;
+                        }
+                    }
+                    if (e.type === "mouseup") {
+                        finish_arrow();
+                    }
+                } else {
+                    finish_arrow();
+                }
+            }
+        };
+    }
+    
+    function make_hover_square(x, y)
+    {
+        var el = document.createElement("div");
+        
+        el.classList.add("hoverSquare");
+        el.classList.add("rank" + y);
+        el.classList.add("file" + x);
+        
+        el.addEventListener("click", hover_square_click_maker(x, y));
+        
+        el.addEventListener("mousedown", arrow_start_maker(y, x));
+        el.addEventListener("mousemove", arrow_move_maker(y, x));
+        el.addEventListener("mouseup", arrow_move_maker(y, x));
+        
+        return el;
+    }
+    
+    
+    function get_rank_file_from_str(str)
+    {
+        return {rank: str[1] - 1, file: str.charCodeAt(0) - 97};
+    }
+    
+    function remove_dot(x, y)
+    {
+        if (hover_squares[y][x].dot_color) {
+            hover_squares[y][x].classList.remove("dot_square_" + hover_squares[y][x].dot_color);
+            hover_squares[y][x].classList.remove("dotSquare");
+            delete hover_squares[y][x].dot_color;
+        }
+    }
+    
+    function clear_dots()
+    {
+        hover_squares.forEach(function oneach(file, y)
+        {
+            file.forEach(function oneach(sq, x)
+            {
+                remove_dot(x, y);
+            });
+        });
+    }
+    
+    function add_dot(x, y, color)
+    {
+        remove_dot(x, y);
+        
+        if (color && colors.indexOf(color) > -1) {
+            hover_squares[y][x].dot_color = color;
+            hover_squares[y][x].classList.add("dot_square_" + color);
+            hover_squares[y][x].classList.add("dotSquare");
+        }
+    }
+    
+    function add_clickabe_square(move_data)
+    {
+        if (board.clicked_piece) {
+            if (!board.clicked_piece.clickable_squares) {
+                board.clicked_piece.clickable_squares = [];
+            }
+            board.clicked_piece.clickable_squares.push(move_data);
+        }
+    }
+    
+    function get_piece_start_square(piece)
+    {
+        return get_file_letter(piece.file) + (piece.rank + 1);
+    }
+    
+    function show_legal_moves(piece)
+    {
+        var start_sq = get_piece_start_square(piece);
+        
+        if (legal_moves && legal_moves.uci) {
+            legal_moves.uci.forEach(function oneach(move, i)
+            {
+                var move_data,
+                    color;
+                
+                if (move.indexOf(start_sq) === 0) {
+                    move_data = get_rank_file_from_str(move.substr(2));
+                    ///NOTE: We can't use get_piece_from_rank_file(move_data.rank, move_data.file) because it won't find en passant.
+                    if (legal_moves.san[i].indexOf("x") === -1) {
+                        color = "green";
+                    } else {
+                        color = "red";
+                    }
+                    add_dot(move_data.file, move_data.rank, color);
+                    add_clickabe_square(move_data);
+                }
+            });
+        }
+    }
+    
     function make_square(x, y)
     {
         var el = document.createElement("div");
@@ -53,8 +298,6 @@ var BOARD = function board_init(el, options)
         } else {
             el.classList.add("dark");
         }
-        
-        ///TODO: attach events
         
         return el;
     }
@@ -71,11 +314,13 @@ var BOARD = function board_init(el, options)
     
     function size_board(w, h)
     {
-        board_details.width = parseFloat(w);
+        board_details.width  = parseFloat(w);
         board_details.height = parseFloat(h);
         
-        board.el.style.width  = board_details.width + "px";
+        board.el.style.width  = board_details.width  + "px";
         board.el.style.height = board_details.height + "px";
+        
+        G.events.trigger("board_resize");
     }
     
     function make_board_num(num)
@@ -142,11 +387,14 @@ var BOARD = function board_init(el, options)
         }
         
         squares = [];
+        hover_squares = [];
         
         for (y = board_details.ranks - 1; y >= 0; y -= 1) {
             squares[y] = [];
+            hover_squares[y] = [];
             for (x = 0; x < board_details.files; x += 1) {
                 squares[y][x] = make_square(x, y);
+                hover_squares[y][x] = make_hover_square(x, y);
                 if (x === 0) {
                     cur_rank = make_rank(y);
                     board.el.appendChild(cur_rank);
@@ -155,6 +403,7 @@ var BOARD = function board_init(el, options)
                 if (y === 0) {
                     squares[y][x].appendChild(make_board_letter(x));
                 }
+                squares[y][x].appendChild(hover_squares[y][x]);
                 cur_rank.appendChild(squares[y][x]);
             }
         }
@@ -217,7 +466,7 @@ var BOARD = function board_init(el, options)
     
     function is_piece_moveable(piece)
     {
-        return board.mode === "setup" || (board.mode === "play" && board.turn === piece.color && board.players[board.turn].type === "human");
+        return board.get_mode() === "setup" || (board.get_mode() === "play" && board.turn === piece.color && board.players[board.turn].type === "human");
     }
     
     function is_left_click(e)
@@ -231,6 +480,13 @@ var BOARD = function board_init(el, options)
             e.clientX = e.changedTouches[0].pageX;
             e.clientY = e.changedTouches[0].pageY;
         }
+    }
+    
+    function focus_piece_for_moving(piece)
+    {
+        board.clicked_piece = {piece: piece};
+        focus_square(piece.file, piece.rank, "green");
+        show_legal_moves(piece);
     }
     
     function add_piece_events(piece)
@@ -252,8 +508,23 @@ var BOARD = function board_init(el, options)
                 /// Prevent the cursor from becoming an I beam.
                 e.preventDefault();
             }
+            
+            if (board.get_mode() === "play") {
+                if (board.clicked_piece && board.clicked_piece.piece) {
+                    remove_square_focus(board.clicked_piece.piece.file, board.clicked_piece.piece.rank);
+                    clear_dots();
+                    /// If the king was previously selected, we want to refocus it.
+                    if (board.checked_king) {
+                        focus_square(board.checked_king.file, board.checked_king.rank, "red");
+                    }
+                }
+                
+                if (is_piece_moveable(piece)) {
+                    focus_piece_for_moving(piece);
+                }
+            }
         }
-    
+        
         piece.el.addEventListener("mousedown", onpiece_mouse_down);
         
         piece.el.addEventListener("touchstart", onpiece_mouse_down);
@@ -270,13 +541,17 @@ var BOARD = function board_init(el, options)
     
     function onmousemove(e)
     {
+        /// If the user held the ctrl button and then clicked off of the browser, it will still be marked as capturing. We remove that here.
+        if (capturing_clicks && !e.ctrlKey) {
+            stop_capturing_clicks();
+        }
         if (board.dragging && board.dragging.piece) {
             fix_touch_event(e);
-            prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)")
+            prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)");
         }
     }
     
-    function get_hovering_square(e)
+    function get_dragging_hovering_square(e)
     {
         fix_touch_event(e);
         var el,
@@ -290,7 +565,7 @@ var BOARD = function board_init(el, options)
         
         el = document.elementFromPoint(x, y);
         
-        if (el && el.className && el.classList.contains("square")) {
+        if (el && el.className && el.classList.contains("square") || el.classList.contains("hoverSquare")) {
             rank_m = el.className.match(/rank(\d+)/);
             file_m = el.className.match(/file(\d+)/);
             
@@ -310,18 +585,23 @@ var BOARD = function board_init(el, options)
     
     function is_legal_move(uci)
     {
-        if (!board.legal_moves || !board.legal_moves.uci) {
+        if (!legal_moves || !legal_moves.uci) {
             return false;
         }
         
-        return board.legal_moves.uci.indexOf(uci) > -1;
+        return legal_moves.uci.indexOf(uci) > -1;
     }
     
     function get_move(starting, ending)
     {
+        var str;
         if (starting && ending) {
-            return get_file_letter(starting.file) + (parseInt(starting.rank, 10) + 1) + get_file_letter(ending.file) + (parseInt(ending.rank, 10) + 1);
+            str = get_file_letter(starting.file) + (parseInt(starting.rank, 10) + 1) + get_file_letter(ending.file) + (parseInt(ending.rank, 10) + 1);
+            if (is_promoting(starting, ending)) {
+                str += "q"; /// We just add something to make sure it's a legal move. We'll ask the user later what he actually wants to promote to.
+            }
         }
+        return str;
     }
     
     function create_promotion_icon(which, piece, cb)
@@ -334,7 +614,7 @@ var BOARD = function board_init(el, options)
         });
         
         /// In play mode, we can go with the color; in setup mode, we need to get the color from the piece.
-        icon.style.backgroundImage = get_piece_img({color: board.mode === "play" ? board.turn : piece.color, type: which});
+        icon.style.backgroundImage = get_piece_img({color: board.get_mode() === "play" ? board.turn : piece.color, type: which});
         
         icon.classList.add("promotion_icon");
         
@@ -345,7 +625,7 @@ var BOARD = function board_init(el, options)
     {
         var mod_win = document.createElement("div"),
             text_el = document.createElement("div"),
-            old_mode = board.mode;
+            old_mode = board.get_mode();
         
         mod_win.classList.add("board_modular_window");
         
@@ -357,7 +637,7 @@ var BOARD = function board_init(el, options)
         
         function onselect(which)
         {
-            board.mode = old_mode;
+            board.set_mode(old_mode)
             close_window();
             cb(which);
         }
@@ -373,7 +653,7 @@ var BOARD = function board_init(el, options)
         mod_win.appendChild(create_promotion_icon("n", piece, onselect));
         
         document.body.appendChild(mod_win);
-        board.mode = "waiting_for_modular_window";
+        board.set_mode("waiting_for_modular_window")
         board.modular_window_close = close_window;
     }
     
@@ -382,15 +662,15 @@ var BOARD = function board_init(el, options)
         /// We make it async because of promotion.
         function record()
         {
-            delete board.legal_moves;
+            legal_moves = null;
             
-            if (board.mode === "play" && board.onmove) {
+            if (board.get_mode() === "play" && board.onmove) {
                 track_move(uci);
                 board.onmove(uci);
             }
             
             if (cb) {
-                cb(uci)
+                cb(uci);
             }
         }
         
@@ -424,11 +704,11 @@ var BOARD = function board_init(el, options)
     
     function get_san(uci)
     {
-        if (!board.legal_moves || !board.legal_moves.uci || !board.legal_moves.san) {
+        if (!legal_moves || !legal_moves.uci || !legal_moves.san) {
             return;
         }
         
-        return board.legal_moves.san[board.legal_moves.uci.indexOf(uci)];
+        return legal_moves.san[legal_moves.uci.indexOf(uci)];
     }
     
     function promote_piece(piece, uci)
@@ -453,7 +733,7 @@ var BOARD = function board_init(el, options)
         ///NOTE: This does not find en passant captures. See below.
         captured_piece = get_piece_from_rank_file(square.rank, square.file);
         
-        if (board.mode === "play") {
+        if (board.get_mode() === "play") {
             /// Indicate that the board has been changed; it is not in the inital starting position.
             board.messy = true;
             
@@ -474,7 +754,7 @@ var BOARD = function board_init(el, options)
                 rook = get_piece_from_rank_file(rook_rank, 0);
                 set_piece_pos(rook, {rank: rook_rank, file: 3});
             }
-        } else if (board.mode === "setup" && captured_piece) {
+        } else if (board.get_mode() === "setup" && captured_piece) {
             /// The pieces should swap places.
             set_piece_pos(captured_piece, piece);
             
@@ -503,49 +783,49 @@ var BOARD = function board_init(el, options)
     {
         var i;
         
+        function remove()
+        {
+            piece.el.parentNode.removeChild(piece.el);
+        }
+        
         for (i = board.pieces.length - 1; i >= 0; i -= 1) {
             if (piece.id === board.pieces[i].id) {
                 G.array_remove(board.pieces, i);
                 /// Make it fade out.
                 piece.el.classList.add("captured");
-                setTimeout(function ()
-                {
-                    piece.el.parentNode.removeChild(piece.el);
-                }, 2000);
+                setTimeout(remove, 2000);
                 return;
             }
         }
+    }
+    
+    function make_move(piece, square, uci, promoting)
+    {
+        move_piece(piece, square, uci);
+        report_move(uci, promoting, piece, function onreport(finalized_uci)
+        {
+            ///NOTE: Since this is async, we need to store which piece was moved.
+            promote_piece(piece, finalized_uci);
+        });
     }
     
     function onmouseup(e)
     {
         var square,
             uci,
-            promoting,
-            piece_storage;
+            promoting;
         
         if (board.dragging && board.dragging.piece) {
-            square = get_hovering_square(e);
+            square = get_dragging_hovering_square(e);
             promoting = is_promoting(board.dragging.piece, square);
             
             uci = get_move(board.dragging.piece, square);
             
-            if (promoting) {
-                uci += "q"; /// We just add something to make sure it's a legal move. We'll ask the user later what he actually wants to promote to.
-            }
-            
-            if (square && (board.mode === "setup" || is_legal_move(uci))) {
-                piece_storage = board.dragging.piece;
-                move_piece(board.dragging.piece, square, uci);
-                report_move(uci, promoting, board.dragging.piece, function onreport(finalized_uci)
-                {
-                    ///NOTE: Since this is async, we need to store which piece was moved.
-                    promote_piece(piece_storage, finalized_uci);
-                });
+            if (square && (board.get_mode() === "setup" || is_legal_move(uci))) {
+                make_move(board.dragging.piece, square, uci, promoting);
             } else {
                 /// Snap back.
-                ///TODO: Be able to remove pieces in setup mode.
-                if (board.mode === "setup") {
+                if (board.get_mode() === "setup") {
                     remove_piece(board.dragging.piece);
                     /// We need to remove "dragging" to make the transitions work again.
                     board.dragging.piece.el.classList.remove("dragging");
@@ -569,6 +849,14 @@ var BOARD = function board_init(el, options)
         return "url(\"" + encodeURI("img/pieces/" + board.theme + "/" + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
     }
     
+    function clear_board_extras()
+    {
+        clear_highlights();
+        clear_focuses();
+        clear_dots();
+        arrow_manager.clear();
+    }
+    
     function set_board(fen)
     {
         fen = fen || get_init_pos();
@@ -582,15 +870,17 @@ var BOARD = function board_init(el, options)
                 
                 piece.el.classList.add("piece");
                 
-                piece.el.style.backgroundImage = get_piece_img(piece)
+                piece.el.style.backgroundImage = get_piece_img(piece);
                 
                 add_piece_events(piece);
             }
             
-            /// We just put them all in the bottom left corner and more the position.
+            /// We just put them all in the bottom left corner and move the position.
             squares[0][0].appendChild(piece.el);
             set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
+        
+        clear_board_extras();
         
         board.turn = "w";
         board.moves = [];
@@ -599,26 +889,29 @@ var BOARD = function board_init(el, options)
     
     function wait()
     {
-        board.mode = "wait";
+        board.set_mode("wait")
         board.el.classList.add("waiting");
         board.el.classList.remove("settingUp");
         board.el.classList.remove("playing");
+        arrow_manager.el.classList.add("waiting");
     }
     
     function play()
     {
-        board.mode = "play";
+        board.set_mode("play")
         board.el.classList.remove("waiting");
         board.el.classList.remove("settingUp");
         board.el.classList.add("playing");
+        arrow_manager.el.classList.remove("waiting");
     }
     
     function enable_setup()
     {
-        board.mode = "setup";
+        board.set_mode("setup")
         board.el.classList.remove("waiting");
         board.el.classList.remove("playing");
         board.el.classList.add("settingUp");
+        arrow_manager.el.classList.remove("waiting");
     }
     
     function get_piece_from_rank_file(rank, file)
@@ -685,12 +978,56 @@ var BOARD = function board_init(el, options)
     {
         board.moves.push(uci);
         switch_turn();
+        clear_board_extras();
+        G.events.trigger("board_move", {uci: uci});
     }
     
     function move(uci)
     {
         move_piece_uci(uci);
         track_move(uci);
+    }
+    
+    function onkeydown(e)
+    {
+        var target = e.target || e.srcElement || e.originalTarget;
+        
+        if (e.ctrlKey) {
+            board.el.classList.add("catchClicks");
+            capturing_clicks = true;
+            if (e.keyCode === 39) { /// Right
+                cur_color += 1;
+                if (cur_color >= colors.length) {
+                    cur_color = 0;
+                }
+            } else if (e.keyCode === 37) { /// Left
+                cur_color -= 1;
+                if (cur_color < 0) {
+                    cur_color = colors.length - 1;
+                }
+            } else if (e.keyCode === 32) { /// Space
+                clear_highlights();
+                arrow_manager.clear(true); /// Only clear lines drawn by the user.
+            }
+        }
+        
+        if (e.keyCode === 8 && (!target || target.tagName === "BODY")) { /// backspace
+            arrow_manager.delete_arrow();
+            e.preventDefault();
+        }
+    }
+    
+    function stop_capturing_clicks()
+    {
+        board.el.classList.remove("catchClicks");
+        capturing_clicks = false;
+    }
+    
+    function onkeyup(e)
+    {
+        if (!e.ctrlKey) {
+            stop_capturing_clicks();
+        }
     }
     
     function get_fen(full)
@@ -740,11 +1077,429 @@ var BOARD = function board_init(el, options)
         return fen;
     }
     
+    function find_king(color)
+    {
+        var i;
+        
+        for (i = board.pieces.length - 1; i >= 0; i -= 1) {
+            if (board.pieces[i].color === color && board.pieces[i].type === "k") {
+                return board.pieces[i];
+            }
+        }
+    }
+    
+    function focus_checked_king(king)
+    {
+        if (king) {
+            focus_square(king.file, king.rank, "red");
+        }
+        board.checked_king = king;
+    }
+    
+    
+    function show_lines_of_power()
+    {
+        var power_squares = [];
+        
+        function add_square(rank, file, piece)
+        {
+            var color;
+            
+            if (rank >= 0 && rank < board_details.ranks && file >= 0 && file < board_details.files) {
+                if (!power_squares[rank]) {
+                    power_squares[rank] = [];
+                }
+                
+                color = piece.color === "w" ? "red" : "blue";
+                
+                /// Mix.
+                if (power_squares[rank][file] && power_squares[rank][file].color !== color) {   
+                    color = "purple";
+                }
+                power_squares[rank][file] = {rank: rank, file: file, color: color};
+                ///TODO: Remove squares when in check that do not remove check.
+            }
+        }
+        
+        function add_squares_dir(piece, file_change, rank_change)
+        {
+            var rank = piece.rank,
+                file = piece.file;
+            
+            for (;;) {
+                rank += rank_change;
+                file += file_change;
+                if (file >= 0 && file < board_details.files && rank >= 0 && rank < board_details.ranks) {
+                    add_square(rank, file, piece);
+                    
+                    /// Stop at a piece (either friend or foe)
+                    if (get_piece_from_rank_file(rank, file)) {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        function add_diagonal_squares(piece)
+        {
+            add_squares_dir(piece,  1,  1);
+            add_squares_dir(piece,  1, -1);
+            add_squares_dir(piece, -1,  1);
+            add_squares_dir(piece, -1, -1);
+        }
+        
+        function add_orthogonal_squares(piece)
+        {
+            add_squares_dir(piece,  1,  0);
+            add_squares_dir(piece, -1,  0);
+            add_squares_dir(piece,  0,  1);
+            add_squares_dir(piece,  0, -1);
+        }
+        
+        board.pieces.forEach(function oneach(piece)
+        {
+            var dir;
+            if (!piece.captured) {
+                if (piece.type === "p") {
+                    if (piece.color === "w") {
+                        dir = 1;
+                    } else {
+                        dir = -1;
+                    }
+                    add_square(piece.rank + dir, piece.file + 1, piece);
+                    add_square(piece.rank + dir, piece.file - 1, piece);
+                } else if (piece.type === "n") {
+                    add_square(piece.rank + 2, piece.file + 1, piece);
+                    add_square(piece.rank - 2, piece.file + 1, piece);
+                    add_square(piece.rank + 1, piece.file + 2, piece);
+                    add_square(piece.rank + 1, piece.file - 2, piece);
+                    add_square(piece.rank - 2, piece.file - 1, piece);
+                    add_square(piece.rank + 2, piece.file - 1, piece);
+                    add_square(piece.rank - 1, piece.file - 2, piece);
+                    add_square(piece.rank - 1, piece.file + 2, piece);
+                } else if (piece.type === "b") {
+                    add_diagonal_squares(piece);
+                } else if (piece.type === "r") {
+                    add_orthogonal_squares(piece);
+                } else if (piece.type === "q") {
+                    add_orthogonal_squares(piece);
+                    add_diagonal_squares(piece);
+                } else if (piece.type === "k") {
+                    add_square(piece.rank + 1, piece.file + 1, piece);
+                    add_square(piece.rank - 1, piece.file - 1, piece);
+                    add_square(piece.rank + 1, piece.file - 1, piece);
+                    add_square(piece.rank - 1, piece.file + 1, piece);
+                    add_square(piece.rank + 1, piece.file    , piece);
+                    add_square(piece.rank - 1, piece.file    , piece);
+                    add_square(piece.rank    , piece.file - 1, piece);
+                    add_square(piece.rank    , piece.file + 1, piece);
+                }
+            }
+        });
+        
+        power_squares.forEach(function oneach(ranks)
+        {
+            ranks.forEach(function oneach(data)
+            {
+                highlight_square(data.file, data.rank, data.color);
+            });
+        });
+    }
+    
+    function set_legal_moves(moves)
+    {
+        legal_moves = moves;
+        
+        if (board.display_lines_of_power) {
+            show_lines_of_power();
+        }
+        
+        G.events.trigger("board_set_legal_moves", {moves: moves});
+    }
+    
+    function get_legal_moves()
+    {
+        return legal_moves;
+    }
+    
+    function check_highlight(e)
+    {
+        var king;
+        if (legal_moves && legal_moves.checkers && legal_moves.checkers.length) {
+            king = find_king(board.turn);
+            legal_moves.checkers.forEach(function (checker)
+            {
+                var checker_data = get_rank_file_from_str(checker);
+                arrow_manager.draw(checker_data.rank, checker_data.file, king.rank, king.file, rgba[1], true);
+            });
+        }
+        
+        ///NOTE: This will clear the checked king square if there is no checked king, so it must always be called.
+        focus_checked_king(king);
+    }
+    
+    G.events.attach("board_set_legal_moves", check_highlight);
+    
+    arrow_manager = (function create_draw_arrow()
+    {
+        var canvas = document.createElement("canvas"),
+            ctx,
+            on_dom,
+            arrows = [],
+            canvas_left,
+            canvas_top,
+            remove_timer;
+        
+        function get_intersect(x1, y1, x2, y2, x3, y3, x4, y4)
+        {
+            /// See https://en.wikipedia.org/wiki/Line–line_intersection.
+            return {
+                x: ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)),
+                y: ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4))
+            };
+        }
+        
+        function rotate_point(point_x, point_y, origin_x, origin_y, angle) {
+            return {
+                x: Math.cos(angle) * (point_x - origin_x) - Math.sin(angle) * (point_y - origin_y) + origin_x,
+                y: Math.sin(angle) * (point_x - origin_x) + Math.cos(angle) * (point_y - origin_y) + origin_y
+            };
+        }
+        
+        function create_arrow(x1, y1, x2, y2, options)
+        {
+            options = options || {};
+            
+            options.width = options.width || 12;
+            options.fillStyle = options.fillStyle || "rgb(0,0,200)";
+            options.head_len = options.head_len || 30;
+            
+            if (options.head_len < options.width + 1) {
+                options.head_len = options.width + 1;
+            }
+            options.head_angle = options.head_angle || Math.PI / 6;
+            
+            var angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            var ang_neg = angle - options.head_angle;
+            var ang_pos = angle + options.head_angle;
+            var tri_point1 = {
+                x: x2 - options.head_len * Math.cos(ang_neg),
+                y: y2 - options.head_len * Math.sin(ang_neg)
+            };
+            var tri_point2 = {
+                x: x2 - options.head_len * Math.cos(ang_pos),
+                y: y2 - options.head_len * Math.sin(ang_pos)
+            };
+            
+            /// Since the line has a width, we need to create a new line by moving the point half of the width and then rotating it to match the line.
+            var p1 = rotate_point(x1, y1 + options.width / 2, x1, y1, angle);
+            var p2 = rotate_point(x2, y2 + options.width / 2, x2, y2, angle);
+            
+            /// Find the point at which the line will reach the bottom of the triangle.
+            var int2 = get_intersect(p1.x, p1.y, p2.x, p2.y, tri_point1.x, tri_point1.y, tri_point2.x, tri_point2.y);
+            
+            var p3 = rotate_point(x1, y1 - options.width / 2, x1, y1, angle);
+            var p4 = rotate_point(x2, y2 - options.width / 2, x2, y2, angle);
+            var int3 = get_intersect(p3.x, p3.y, p4.x, p4.y, tri_point1.x, tri_point1.y, tri_point2.x, tri_point2.y);
+            
+            ctx.fillStyle = options.fillStyle;
+            ctx.beginPath();
+            ctx.arc(x1, y1, options.width / 2, angle - Math.PI / 2, angle - Math.PI * 1.5, true);
+            ctx.lineTo(int2.x, int2.y);
+            ctx.lineTo(tri_point1.x, tri_point1.y);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(tri_point2.x, tri_point2.y);
+            ctx.lineTo(int3.x, int3.y);
+            ctx.closePath();
+            if (options.lineWidth) {
+                ctx.lineWidth = options.lineWidth;
+                ctx.strokeStyle = options.strokeStyle;
+                ctx.stroke();
+            }
+            ctx.fill();
+        }
+        
+        function draw_arrow(rank1, file1, rank2, file2, color, auto, do_not_add)
+        {
+            var box1 = squares[rank1][file1].getBoundingClientRect(),
+                box2 = squares[rank2][file2].getBoundingClientRect(),
+                proportion,
+                adjust_height;
+            
+            if (!do_not_add) {
+                arrows.push({
+                    rank1: rank1,
+                    file1: file1,
+                    rank2: rank2,
+                    file2: file2,
+                    color: color,
+                    auto: auto,
+                });
+            }
+            
+            if (!on_dom) {
+                set_size();
+                document.body.appendChild(canvas);
+                on_dom = true;
+            }
+            
+            proportion = (box1.width / 50);
+            
+            create_arrow(box1.left + box1.width / 2 - canvas_left, box1.top + box1.height / 2 - canvas_top,
+                         box2.left + box2.width / 2 - canvas_left, box2.top + box2.height / 2 - canvas_top,
+                         {
+                            fillStyle: color,
+                            width:    box1.width / 5,
+                            head_len: box1.width / 1.5,
+                         ///lineWidth: box1.width / 10,
+                         ///strokeStyle: "rgba(200,200,200,.4)",
+                         });
+            
+            return arrows.length - 1;
+        }
+        
+        function remove_if_empty()
+        {
+            clearTimeout(remove_timer);
+            
+            /// Since we often draw another arrow quickly, there's no need to remove it right away.
+            remove_timer = setTimeout(function ()
+            {
+                if (on_dom && !arrows.length) {
+                    if (canvas.parentNode) {
+                        canvas.parentNode.removeChild(canvas);
+                    }
+                    on_dom = false;
+                }
+            }, 2000);
+        }
+        
+        function clear(keep_auto_arrows)
+        {
+            var i;
+            
+            /// Sometimes, we don't want to remove the arrows for last move and checkers.
+            if (keep_auto_arrows) {
+                for (i = arrows.length - 1; i >= 0; i -= 1) {
+                    if (!arrows[i].auto) {
+                        G.array_remove(arrows, i);
+                    }
+                }
+            } else {
+                arrows = [];
+            }
+            set_size();
+            
+            if (arrows.length) {
+                draw_all_arrows();
+            } else {
+                remove_if_empty();
+            }
+        }
+        
+        function draw_all_arrows()
+        {
+            arrows.forEach(function (arrow)
+            {
+                draw_arrow(arrow.rank1, arrow.file1, arrow.rank2, arrow.file2, arrow.color, arrow.auto, true);
+            });
+        }
+        
+        function set_size()
+        {
+            var box = board.el.getBoundingClientRect();
+            canvas_left = box.left;
+            canvas_top = box.top;
+            canvas.width = box.width;
+            canvas.height = box.height;
+            canvas.style.top = canvas_top + "px";
+            canvas.style.left = canvas_left + "px";
+        }
+        
+        function redraw()
+        {
+            set_size();
+            draw_all_arrows();
+        }
+        
+        function delete_arrow(which)
+        {
+            if (!which) {
+                which = arrows.length - 1;
+                for (;;) {
+                    /// We are looking for the last arrow drawn by the user.
+                    if (arrows[which] && !arrows[which].auto) {
+                        break;
+                    }
+                    
+                    which -= 1;
+                    
+                    if (which < 0) {
+                        return;
+                    }
+                }
+            }
+            
+            if (arrows[which]) {
+                G.array_remove(arrows, which);
+                redraw();
+            }
+            
+            remove_if_empty();
+        }
+        
+        function arrow_onmove(e)
+        {
+            var uci_data = split_uci(e.uci);
+            draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, rgba[0], true);
+        }
+        
+        function draw(rank1, file1, rank2, file2, color, auto)
+        {
+            return draw_arrow(rank1, file1, rank2, file2, color, auto);
+        }
+        
+        G.events.attach("board_resize", redraw);
+        
+        G.events.attach("board_move", arrow_onmove);
+        
+        canvas.className = "boardArrows";
+        ctx = canvas.getContext("2d");
+        
+        return {
+            el: canvas,
+            draw: draw,
+            clear: clear,
+            delete_arrow: delete_arrow
+        };
+    }());
+    
+    function get_mode()
+    {
+        return mode;
+    }
+    
+    function set_mode(new_mode)
+    {
+        var old_mode = mode;
+        mode = new_mode;
+        G.events.trigger("board_mode_change", {old_move: old_mode, mode: new_mode});
+    }
+    
+    function monitor_mode_change(e)
+    {
+        if (e.mode === "setup") {
+            clear_board_extras();
+        }
+    }
+    
     board = {
         pieces: [],
         size_board: size_board,
         theme: "default",
-        mode: "setup",
         wait: wait,
         play: play,
         enable_setup: enable_setup,
@@ -762,10 +1517,22 @@ var BOARD = function board_init(el, options)
         is_legal_move: is_legal_move,
         moves: [],
         get_fen: get_fen,
-    /// legal_move[]
+        board_details: board_details,
+        highlight_colors: colors,
+        clear_highlights: clear_highlights,
+        highlight_square: highlight_square,
+        set_legal_moves: set_legal_moves,
+        get_legal_moves: get_legal_moves,
+        show_lines_of_power: show_lines_of_power,
+        get_mode: get_mode,
+        set_mode: set_mode,
     /// onmove()
     /// onswitch()
+    /// turn
+    /// display_lines_of_power
     };
+    
+    G.events.attach("board_mode_change", monitor_mode_change);
     
     options = options || {};
     
@@ -777,6 +1544,8 @@ var BOARD = function board_init(el, options)
     window.addEventListener("touchmove", onmousemove);
     window.addEventListener("mouseup",  onmouseup);
     window.addEventListener("touchend", onmouseup);
+    window.addEventListener("keydown", onkeydown);
+    window.addEventListener("keyup", onkeyup);
     
     return board;
 };

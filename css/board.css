@@ -84,6 +84,13 @@
             transition: none;
 }
 
+.boardArrows {
+    pointer-events: none;
+    position: absolute;
+}
+.boardArrows.waiting {
+    opacity: .4
+}
 .chess_board.waiting .piece {
     cursor: default!important;
 }
@@ -162,4 +169,125 @@
 .promotion_icon:hover {
     background-color: rgba(89, 142, 222, .5);
     opacity: 1;
+}
+
+.chess_board .hoverSquare {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    pointer-events: none;
+    opacity: .8;
+}
+.chess_board.catchClicks .hoverSquare {
+    pointer-events: all!important;
+}
+
+
+/* These should match the rgba array. */
+.chess_board .hoverSquare.blue {
+    background-color: rgba(0, 0, 240, .6);
+}
+.chess_board .hoverSquare.red {
+    background-color: rgba(240, 0, 0, .6);
+}
+.chess_board .hoverSquare.green {
+    background-color: rgba(0, 240, 0, .6);
+}
+.chess_board .hoverSquare.yellow {
+    background-color: rgba(240, 240, 0, .6);
+}
+.chess_board .hoverSquare.teal {
+    background-color: rgba(0, 240, 240, .6);
+}
+.chess_board .hoverSquare.orange {
+    background-color: rgba(240, 120, 0, .6);
+}
+.chess_board .hoverSquare.purple {
+    background-color: rgba(120, 0, 120, .6);
+}
+.chess_board .hoverSquare.pink {
+    background-color: rgba(240, 0, 240, .6);
+}
+
+
+.chess_board .focus_square_green .hoverSquare:before, .chess_board .focus_square_green .hoverSquare:after, .chess_board .focus_square_green.square:before, .chess_board .focus_square_green.square:after {
+    border-color: rgb(0, 140, 0);
+}
+.chess_board .focus_square_red .hoverSquare:before, .chess_board .focus_square_red .hoverSquare:after, .chess_board .focus_square_red.square:before, .chess_board .focus_square_red.square:after {
+    border-color: rgb(140, 0, 0);
+}
+.chess_board .focusSquare .hoverSquare:before {
+    position: absolute;
+    content: ' ';
+    top: 0;
+    left: 0;
+    right: 80%;
+    bottom: 80%;
+    border-style:solid;
+    border-width: 3px 0 0 3px;
+    border-top-left-radius: 5px;
+}
+.chess_board .focusSquare .hoverSquare:after {
+    position: absolute;
+    content: ' ';
+    top: 0;
+    right: 0;
+    left: 80%;
+    bottom: 80%;
+    border-style:solid;
+    border-width: 3px 3px 0 0;
+    border-top-right-radius: 5px;
+}
+
+.chess_board .focusSquare.square:before {
+    position: absolute;
+    content: ' ';
+    bottom: 0;
+    left: 0;
+    right: 80%;
+    top: 80%;
+    border-style:solid;
+    border-width: 0 0 3px 3px;
+    border-bottom-left-radius: 5px;
+}
+.chess_board .focusSquare.square:after {
+    position: absolute;
+    content: ' ';
+    bottom: 0;
+    right: 0;
+    left: 80%;
+    top: 80%;
+    border-style:solid;
+    border-width: 0 3px 3px 0;
+    border-bottom-right-radius: 5px;
+}
+
+
+.chess_board .dotSquare {
+    background-repeat: no-repeat;
+    background-position: 50%;
+    background-size: 22%;
+    /* Make the moveable squares look clickable. */
+    cursor: pointer;
+    pointer-events: all!important;
+}
+
+.chess_board .dot_square_red {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10.3" height="10.3"><path d="M10.132 5.133c0 2.758-2.236 4.994-4.994 4.994C2.38 10.127.144 7.89.144 5.133.144 2.375 2.38.14 5.138.14c2.758 0 4.994 2.235 4.994 4.993z" fill="#c80000" fill-rule="evenodd" stroke="#000" stroke-width="0.3" stroke-opacity=".3"/></svg>');
+            transition: background-color 150ms;
+    -webkit-transition: background-color 150ms;
+}
+.chess_board .dot_square_green {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10.3" height="10.3"><path d="M10.132 5.133c0 2.758-2.236 4.994-4.994 4.994C2.38 10.127.144 7.89.144 5.133.144 2.375 2.38.14 5.138.14c2.758 0 4.994 2.235 4.994 4.993z" fill="#00c800" fill-rule="evenodd" stroke="#000" stroke-width="0.3" stroke-opacity=".3"/></svg>');
+            transition: background-color 150ms;
+    -webkit-transition: background-color 150ms;
+}
+.chess_board .dot_square_green:hover {
+    background-color: rgba(0, 240, 0, .2);
+}
+.chess_board .dot_square_red:hover {
+    background-color: rgba(240, 0, 0, .2);
 }

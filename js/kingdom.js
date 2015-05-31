@@ -10,6 +10,7 @@
         player1_el = G.cde("div", {c: "player player_white"}),
         player2_el = G.cde("div", {c: "player player_black"}),
         center_el  = G.cde("div", {c: "center_el"}),
+        rating_slider,
         new_game_el,
         setup_game_el,
         starting_new_game,
@@ -17,44 +18,13 @@
         clock_manager,
         pieces_moved,
         startpos,
-        debugging = true;
-    
-    function array_remove(arr, i, order_irrelevant)
-    {
-        var len = arr.length;
-        
-        /// Handle negative numbers.
-        if (i < 0) {
-            i = len + i;
-        }
-        
-        /// If the last element is to be removed, then all we need to do is pop it off.
-        ///NOTE: This is always the fastest method and it is orderly too.
-        if (i === len - 1) {
-            arr.pop();
-        /// If the second to last element is to be removed, we can just pop off the last one and replace the second to last one with it.
-        ///NOTE: This is always the fastest method and it is orderly too.
-        } else if (i === len - 2) {
-            arr[len - 2] = arr.pop();
-        /// Can use we the faster (but unorderly) remove method?
-        } else if (order_irrelevant || i === len - 2) {
-            if (i >= 0 && i < len) {
-                /// This works by popping off the last array element and using that to replace the element to be removed.
-                arr[i] = arr.pop();
-            }
-        } else {
-            /// The first element can be quickly shifted off.
-            if (i === 0) {
-                arr.shift();
-            /// Ignore numbers that are still negative.
-            ///NOTE: By default, if a number is below the total array count (e.g., array_remove([0,1], -3)), splice() will remove the first element.
-            ///      This behavior is undesirable because it is unexpected.
-            } else if (i > 0) {
-                /// Use the orderly, but slower, splice method.
-                arr.splice(i, 1);
-            }
-        }
-    }
+        debugging = false,
+        legal_move_engine,
+        cur_pos_cmd,
+        game_history,
+        eval_depth = 8,
+        rating_font_style = "Impact,monospace,mono,sans-serif",
+        font_fit;
     
     function error(str)
     {
@@ -66,7 +36,7 @@
     
     function load_engine()
     {
-        var worker = new Worker("js/stockfish.js"),
+        var worker = new Worker("js/stockfish6.js"),
             engine = {started: Date.now()},
             que = [];
         
@@ -183,7 +153,7 @@
                 }
                 
                 /// Remove this from the que.
-                array_remove(que, que_num);
+                G.array_remove(que, que_num);
             }
         };
         
@@ -192,6 +162,7 @@
             cmd = String(cmd).trim();
             
             /// Can't quit. This is a browser.
+            ///TODO: Destroy the engine.
             if (cmd === "quit") {
                 return;
             }
@@ -221,7 +192,7 @@
                 if (debugging) {
                     console.log(i, get_first_word(que[i].cmd))
                 }
-                /// We found a move than has not been stopped yet.
+                /// We found a move that has not been stopped yet.
                 if (get_first_word(que[i].cmd) === "go" && !que[i].discard) {
                     engine.send("stop");
                     que[i].discard = true;
@@ -239,6 +210,8 @@
     
     function calculate_board_size(w, h)
     {
+        var snap;
+        
         w = w || window.innerWidth;
         h = h || window.innerHeight;
         
@@ -248,7 +221,13 @@
             h = w;
         }
         
-        return Math.round(w * .9);
+        w = Math.round(w * .9);
+        
+        snap = w % board.board_details.files;
+        
+        w -= snap;
+        
+        return w;
     }
     
     function resize_board()
@@ -287,11 +266,15 @@
         resize_board();
         resize_players();
         resize_center();
+        rating_slider.resize();
     }
     
-    function get_legal_moves(cb)
+    function get_legal_moves(pos, cb)
     {
-        evaler.send("d", function ond(str)
+        if (pos) {
+            legal_move_engine.send(pos);
+        }
+        legal_move_engine.send("d", function ond(str)
         {
             var san = str.match(/Legal moves\:(.*)/),
                 uci = str.match(/Legal uci moves\:(.*)/),
@@ -417,26 +400,25 @@
     
     function set_legal_moves(cb)
     {
-        get_legal_moves(function onget(moves)
+        get_legal_moves(cur_pos_cmd, function onget(moves)
         {
             zobrist_keys.push(moves.key);
             
             stalemate_by_rules = is_stalemate_by_rule(moves.fen);
-            /// Is the game still on?
             
+            /// Is the game still on?
             ///TODO: Only AI should automatically claim 50 move rule. (And probably not the lower levels).
             if (moves.uci.length && !stalemate_by_rules) {
-                board.legal_moves = moves;
+                board.set_legal_moves(moves);
                 if (cb) {
                     cb();
                 }
             } else {
-                board.legal_moves = {};
-                if (board.mode === "play") {
+                board.set_legal_moves(moves);
+                if (board.get_mode() === "play") {
                     /// Was it checkmate?
-                    //return start_new_game();
                     if (moves.checkers.length && !stalemate_by_rules) {
-                        alert((board.turn === "b" ? "Black" : "White") + " is checkmated!");
+                        alert((board.turn === "b" ? "White" : "Black") + " wins!\n" + (board.turn === "b" ? "Black" : "White") + " is checkmated!");
                     } else {
                         if (stalemate_by_rules) {
                             if (stalemate_by_rules === "50") {
@@ -456,14 +438,114 @@
         });
     }
     
+    function prep_eval(pos, ply)
+    {
+        game_history[ply].pos = pos;
+        
+        setTimeout(eval_stack, 0);
+    }
+    
+    function eval_stack()
+    {
+        var i;
+        
+        for (i = game_history.length - 1; i >= 0; i -= 1) {
+            if (!game_history[i].evaled) {
+                return eval_pos(i);
+            }
+        }
+    }
+    
+    G.events.attach("evaled", eval_stack);
+    
+    function eval_pos(ply)
+    {
+        /// If we are in the middle of an eval, stop it and do the latest one.
+        if (evaler.busy) {
+            if (evaler.cur_ply === ply) {
+                return;
+            }
+            evaler.stop = true;
+            return evaler.send("stop");
+        }
+        
+        evaler.stop = false;
+        evaler.busy = true;
+        evaler.cur_ply = ply;
+        
+        evaler.send(game_history[ply].pos);
+        
+        evaler.send("go depth " + eval_depth, function ongo(str)
+        {
+            var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+            
+            if (game_history[ply] && !evaler.stop) {
+                if (matches) {
+                    game_history[ply].eval_best_move = matches[1];
+                    game_history[ply].eval_ponder = matches[2];
+                }
+                
+                game_history[ply].evaled = true;
+            }
+            evaler.busy = false;
+            G.events.trigger("evaled", {ply: ply});
+        }, function stream(str)
+        {
+            var matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+) .*pv (.+)/),
+                score,
+                type,
+                depth,
+                pv,
+                data;
+            
+            /// Are we still supposed to be evaling?
+            ///NOTE: When a new game starts, the game_history array will be empty.
+            if (game_history[ply]) {
+                if (matches) {
+                    depth = Number(matches[1]);
+                    type = matches[2];
+                    score = Number(matches[3]);
+                    pv = matches[4].split(" ");
+                    
+                    /// Convert the relative score to an absolute score.
+                    if (game_history[ply].turn === "b") {
+                        score *= -1;
+                    }
+                    
+                    game_history[ply].eval_score = score;
+                    game_history[ply].eval_type = type;
+                    game_history[ply].eval_depth = depth;
+                    game_history[ply].eval_pv = pv;
+                    
+                    data = {score: score, type: type, depth: depth, pv: pv};
+                } else {
+                    if (/score mate 0\b/.test(str)) {
+                        game_history[ply].eval_score = 0;
+                        game_history[ply].eval_type = "mate";
+                        game_history[ply].eval_depth = 0;
+                        data = {score: 0, type: "mate", depth: 0};
+                    }
+                }
+            }
+            
+            if (data) {
+                data.ply = ply;
+                data.turn = game_history[ply].turn;
+                G.events.trigger("eval", data);
+            }
+        });
+    }
+    
     function onengine_move(str)
     {
         var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/),
             player = board.players[board.turn],
             move,
-            ponder;
+            ponder,
+            pos,
+            legal_moves = board.get_legal_moves();
         
-        if (board.mode !== "play") {
+        if (board.get_mode() !== "play") {
             return;
         }
         
@@ -476,11 +558,11 @@
             console.log("ILLEGAL MOVE: " + res[1]);
             console.log("!!!!!!!!!!!!!!!!!!!!!!!!");
             
-            if (!board.legal_moves || !board.legal_moves.uci) {
+            if (!legal_moves || !legal_moves.uci) {
                 error("Cannot find a legal move");
             }
             /// Just use the first legal move
-            move = board.legal_moves.uci[0];
+            move = legal_moves.uci[0];
             ponder = "";
         } else {
             move = res[1];
@@ -491,22 +573,22 @@
         player.engine.ponder_move = ponder;
         
         board.move(move);
-        set_ai_position();
+        set_cur_pos_cmd();
         
         /// Clear legal moves to indicate that we are between moves. (This is used by the clock manager to determine if it should look call the flag.)
-        board.legal_moves = {};
+        board.set_legal_moves({});
         
         /// Wait until we set legal moves. It's only fair.
         clock_manager.stop_timer();
         set_legal_moves(function onset()
         {
             tell_engine_to_move();
-            if (board.mode === "play") {
+            if (board.get_mode() === "play") {
                 clock_manager.start_timer();
             }
         });
         
-        G.events.trigger("move");
+        G.events.trigger("move", {move: move, ponder: ponder});
     }
     
     function onthinking(str)
@@ -516,23 +598,17 @@
         }
     }
     
-    function set_ai_position()
+    function set_cur_pos_cmd()
     {
-        var cmd = "position " + startpos;
+        var cmd = "position " + startpos,
+            ply = 0;
         
         if (board.moves && board.moves.length) {
+            ply = board.moves.length;
             cmd += " moves " + board.moves.join(" ");
         }
         
-        if (evaler) {
-            evaler.send(cmd);
-        }
-        if (board.players.w.type === "ai") {
-            board.players.w.engine.send(cmd)
-        }
-        if (board.players.b.type === "ai") {
-            board.players.b.engine.send(cmd)
-        }
+        cur_pos_cmd = cmd;
     }
     
     function use_depth(player)
@@ -552,7 +628,7 @@
             depth,
             player = board.players[board.turn];
         
-        if (board.mode !== "play") {
+        if (board.get_mode() !== "play") {
             return;
         }
         
@@ -607,20 +683,20 @@
             }
             
             //depth = 1;
-            
+            player.engine.send(cur_pos_cmd);
             player.engine.send("go " + (typeof depth !== "undefined" ? "depth " + depth : "") + " wtime " + wtime + " btime " + btime , onengine_move, onthinking);
             return true;
         }
     }
     
-    function onmove(move)
+    function on_human_move(move)
     {
-        set_ai_position();
+        set_cur_pos_cmd();
         
         ///NOTE: We need to get legal moves (even for AI) because we need to know if a move is castling or not.
         set_legal_moves(tell_engine_to_move);
         
-        G.events.trigger("move");
+        G.events.trigger("move", {move: move});
     }
     
     function all_ready(cb)
@@ -655,6 +731,10 @@
         }
         
         if (evaler.get_cue_len()) {
+            return wait();
+        }
+        
+        if (legal_move_engine && legal_move_engine.get_cue_len()) {
             return wait();
         }
         
@@ -719,16 +799,14 @@
         }
         
         /// A simple check to see if the FEN makes sense.
-        if (!/^\s*fen\s+[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*/i.test(startpos)) {
+        if (!/^\s*fen\s+[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*\/[^\/\s]*/i.test(fen)) {
             return return_val(false);
         }
         
         /// Set it to an invalid one first, so that when we set it to a valid one, it should change; otherwise it will remain invalid.
         ///NOTE: Stockfish just completely ignores invalid FEN's. It also allows for lots of omissions.
-        evaler.send("position fen 8/8/8/8/8/8/8/8 b - - 0 1");
-        evaler.send("position " + startpos);
-        
-        get_legal_moves(function onget(data)
+        legal_move_engine.send("position fen 8/8/8/8/8/8/8/8 b - - 0 1");
+        get_legal_moves("position " + fen, function onget(data)
         {
             var wkings = 0,
                 bkings = 0;
@@ -753,8 +831,7 @@
                 return return_val(false);
             }
             
-            evaler.send("position fen " + data.fen.placement + " " + (data.fen.turn === "w" ? "b" : "w"));
-            get_legal_moves(function onget(data)
+            get_legal_moves("position fen " + data.fen.placement + " " + (data.fen.turn === "w" ? "b" : "w"), function onget(data)
             {
                 /// There must not be anyone already checking the opponent's king.
                 return return_val(!data.checkers.length);
@@ -762,9 +839,23 @@
         });
     }
     
+    function get_legal_move_engine()
+    {
+        if (!legal_move_engine) {
+            if (board.players.b.engine) {
+                legal_move_engine = board.players.b.engine;
+            } else if (board.players.w.engine) {
+                legal_move_engine = board.players.w.engine;
+            } else {
+                board.players.b.engine = load_engine();
+                legal_move_engine = board.players.b.engine;
+            }
+        }
+    }
+    
     function start_new_game()
     {
-        var dont_reset = board.mode === "setup",
+        var dont_reset = board.get_mode() === "setup",
             stop_new_game;
         
         show_loading();
@@ -786,6 +877,9 @@
         
         stop_game();
         
+        game_history = [];
+        
+        evaler.send("stop");
         evaler.send("ucinewgame");
         
         if (board.players.w.type === "ai") {
@@ -794,6 +888,8 @@
         if (board.players.b.type === "ai") {
             board.players.b.engine.send("ucinewgame");
         }
+        
+        get_legal_move_engine();
         
         all_flushed(function start_game()
         {
@@ -836,7 +932,7 @@
                 stalemate_by_rules = null;
                 pieces_moved = false;
                 
-                set_ai_position();
+                set_cur_pos_cmd();
                 //engine.send("position fen 6R1/1pp5/5k2/p1b4r/P1P2p2/1P5r/4R2P/7K w - - 0 39");
                 //board.moves = "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d4 e5d4 e1g1 f6e4 f1e1 d7d5 c4d5 d8d5 b1c3 d5c4 c3e4 c8e6 b2b3 c4d5 c1g5 f8b4 c2c3 f7f5 e4d6 b4d6 c3c4 d5c5 d1e2 e8g8 e2e6 g8h8 a1d1 f5f4 e1e4 c5a5 e4e2 a5f5 e6f5 f8f5 g5h4 a8f8 d1d3 h7h6 f3d4 c6d4 d3d4 g7g5 h4g5 h6g5 g1f1 g5g4 f2f3 g4f3 g2f3 h8g7 a2a4 f8h8 f1g2 g7f6 g2h1 h8h3 d4d3 d6c5 e2b2 f5g5 b2b1 a7a5 b1f1 c5e3 f1e1 h3f3 d3d8 g5h5 d8g8 f3h3 e1e2 e3c5".split(" ");
                 set_legal_moves(function onset()
@@ -844,6 +940,11 @@
                     if (stop_new_game) {
                         return starting_new_game = false;
                     }
+                    
+                    game_history = [{turn: board.turn, pos: "position " + startpos}];
+                    //debugger;
+                    prep_eval(game_history[0].pos, 0);
+                    
                     clock_manager.reset_clocks();
                     starting_new_game = false;
                     hide_loading();
@@ -908,8 +1009,8 @@
                         /// Set the AI level if not already.
                         player.set_level(player.level);
                         
-                        if (board.mode === "play") {
-                            set_ai_position();
+                        if (board.get_mode() === "play") {
+                            set_cur_pos_cmd();
                             tell_engine_to_move();
                         }
                         player.els.level.style.display = "inline";
@@ -1171,7 +1272,7 @@
             G.cde("option", {t: "Sudden Death", value: "sd", selected: player.time.type === "sd"}),
         ]);
         
-        var sd_el = G.cde("input", {type: "text", value: player.time.sd || "5:00"}, {all_on_changes: make_set_sd_time(player)});
+        var sd_el = G.cde("input", {type: "text", value: player.time.sd || "15:00"}, {all_on_changes: make_set_sd_time(player)});
         
         sd_container.appendChild(G.cde("", [
             "Time: ",
@@ -1204,8 +1305,8 @@
     
     function create_players()
     {
-        board.players.w.level = 0;
-        board.players.b.level = 0;
+        board.players.w.level = 20;
+        board.players.b.level = 20;
         
         add_player_els(player1_el, board.players.w);
         add_player_els(player2_el, board.players.b);
@@ -1271,36 +1372,22 @@
         
         create_center();
         
-        board.onmove = onmove;
+        board.onmove = on_human_move;
         
-        //engine = load_engine();
         evaler = load_engine();
-        
-        evaler.stream = function (line)
-        {
-            /*
-            if (line.substr(0, 4) === "info") {
-                player1_el.textContent = line;
-            }
-            */
-            if (debugging) {
-                console.log(line);
-            }
-        }
-        
-        //board.players.b.type = "human";
-        //board.players.w.type = "ai";
         
         evaler.send("uci", function onuci(str)
         {
             evaler.send("isready", function onready()
             {
-                if (board.mode === "wait") {
+                if (board.get_mode() === "wait") {
                     start_new_game();
                 }
             });
         });
     }
+    
+    font_fit = FONT_FIT({fontFamily: rating_font_style});
     
     window.addEventListener("keydown", function catch_key(e)
     {
@@ -1309,12 +1396,18 @@
         }
     });
     
-    G.events.attach("move", function onmove()
+    G.events.attach("move", function onmove(e)
     {
+        var ply = game_history.length;
+        
         if (!pieces_moved) {
             G.events.trigger("firstMove");
             pieces_moved = true;
         }
+        
+        ///NOTE: board.turn has already switched.
+        game_history[ply] = {move: e.move, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
+        prep_eval(cur_pos_cmd, ply);
     });
     
     
@@ -1333,17 +1426,19 @@
         {
             var now = Date.now(),
                 diff,
-                player = board.players[color || board.turn];
+                player = board.players[color || board.turn],
+                legal_moves;
             
             diff = now - last_time;
             last_time = now;
             
             if (player.time_type !== "none") {
+                legal_moves = board.get_legal_moves();
                 player.time -= diff;
                 update_clock(player.color);
                 /// Has someone's time run out?
                 /// Also, make sure that the system has time to check to see if the game has already ended (either by checkmake or stalemate) by checking for legal moves.
-                if (player.time < 0 && (board.legal_moves && board.legal_moves.uci && board.legal_moves.uci.length)) {
+                if (player.time < 0 && (legal_moves && legal_moves.uci && legal_moves.uci.length)) {
                     /// If the player with time is almost beaten (or the game is almost a stalemate) call it a stalemate.
                     if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
                         alert("Stalemate: Player with time has insufficient material");
@@ -1380,7 +1475,7 @@
             timer_on = false;
         }
         
-        function format_time(time)
+        function format_time(time, allow_neg)
         {
             var sign = "",
                 res,
@@ -1392,7 +1487,11 @@
             time = parseFloat(time);
             
             if (time < 0) {
-                sign = "-"
+                if (allow_neg) {
+                    sign = "-";
+                } else {
+                    time = 0;
+                }
             }
             time = Math.abs(time);
             
@@ -1459,7 +1558,6 @@
             clock_els[color].textContent = format_time(board.players[color].time);
         }
         
-    
         function reset_clock(color)
         {
             var player = board.players[color];
@@ -1473,14 +1571,14 @@
         {
             reset_clock("w");
             reset_clock("b");
-        }
+        };
         
         board.onswitch = function onswitch()
         {
             if (timer_on) {
                 tick(board.turn === "w" ? "b" : "w");
             }
-        }
+        };
         
         board.el.parentNode.insertBefore(clock_els.w, board.el);
         board.el.parentNode.insertBefore(clock_els.b, board.el.nextSibling);
@@ -1498,13 +1596,125 @@
             if (clock_els[color]) {
                 clock_els[color].textContent = "--";
             }
-        }
+        };
         
         clock_manager.start_timer = start_timer;
         clock_manager.stop_timer = stop_timer;
         
         return clock_manager;
     }());
+    
+    rating_slider = function make_rating_slider()
+    {
+        var container = G.cde("div", {c: "ratingContainer"});
+        var slider_el = G.cde("div", {c: "ratingSlider"});
+        var canvas = G.cde("canvas", {c: "ratingCanvas"});
+        var obj = {max: 1000, min: -1000, value: 0};
+        var ctx = canvas.getContext("2d");
+        
+        function calculate_slope()
+        {
+            /// m = change in y-value (y2 - y1)
+            ///     change in x-value (x2 - x1)
+            obj.m = (100 - 0) / (obj.min - obj.max);
+        }
+        
+        function draw_marks()
+        {
+            var height = canvas.height,
+                width = canvas.width,
+                qrt_width,
+                pos,
+                median,
+                line_y,
+                font_size,
+                text;
+            
+            median = height / 2;
+            /// Draw median.
+            ctx.beginPath();
+            ctx.lineWidth = height / 150;
+            ctx.strokeStyle = "rgba(200,0,0,.9)";
+            ctx.moveTo(0, median);
+            ctx.lineTo(width, median);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.lineWidth = height / 500;
+            ctx.fillStyle = ctx.strokeStyle = "rgba(128,128,128,.6)";
+            ctx.textAlign = "center";
+            qrt_width = width / 4;
+            
+            for (pos = ((obj.min + 1) - (obj.min + 1) % 100); pos < obj.max; pos += 100) {
+                if (pos !== 0) {
+                    text = String(pos / 100);
+                    font_size = font_fit.fit(text, {w: width / 2, h: width / 2});
+                    ctx.font = font_size + "px " + rating_font_style;
+                    line_y = median - ((pos / obj.max) * median);
+                    ctx.moveTo(0, line_y);
+                    ctx.lineTo(qrt_width, line_y);
+                    ctx.moveTo(width - qrt_width, line_y);
+                    ctx.lineTo(width, line_y);
+                    ctx.fillText(text, width / 2 - 1, line_y + qrt_width / 2);
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        calculate_slope();
+        
+        obj.resize = function ()
+        {
+            var board_rect = board.el.getBoundingClientRect();
+            container.style.top = board_rect.top + "px";
+            container.style.bottom = (window.innerHeight - board_rect.bottom) + "px";
+            container.style.right = (window.innerWidth - board_rect.left) + "px";
+            container.style.left = (board_rect.left - (board_rect.width / 16)) + "px";
+            ///NOTE: clientWidth/clientHeight gets the width without the board.
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            draw_marks();
+        };
+        
+        obj.set_eval = function (value)
+        {
+            obj.value = Number(value);
+            slider_el.style.height = ((obj.m * obj.value) + 50) + "%";
+        };
+        
+        /// Set default.
+        obj.set_eval(obj.value);
+        
+        container.appendChild(canvas);
+        
+        container.appendChild(slider_el);
+        
+        board.el.parentNode.insertBefore(container, board.el);
+    
+        G.events.attach("eval", function oneval(e)
+        {
+            if (debugging) {
+                console.log(e)
+            }
+            
+            /// Is this eval for the current position?
+            if (e.ply === game_history.length - 1) {
+                if (e.type === "cp") {
+                    obj.set_eval(e.score);
+                } else if (e.type === "mate") {
+                    if (e.score === 0) {
+                        obj.set_eval(e.turn === "w" ? -obj.max : obj.max);
+                    } else {
+                        obj.set_eval(e.score > 0 ? obj.max : -obj.max);
+                    }
+                }
+            }
+        });
+        
+        return obj;
+    }();
     
     init();
 }());
