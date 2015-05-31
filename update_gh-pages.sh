@@ -6,17 +6,16 @@ mkdir -p /tmp/git-gh-pages-TMP/node_modules/girdle && \
 cp -r css/*   /tmp/git-gh-pages-TMP/css/ && \
 cp -r img/* /tmp/git-gh-pages-TMP/img/ && \
 cp -r js/* /tmp/git-gh-pages-TMP/js/ && \
-cp -r node_modules/girdle/* /tmp/git-gh-pages-TMP/node_modules/girdle/ && \
+cp -r node_modules/girdle/girdle.js /tmp/git-gh-pages-TMP/girdle.js && \
 cp index.html /tmp/git-gh-pages-TMP/ && \
 cp favicon.ico /tmp/git-gh-pages-TMP/ && \
 git checkout gh-pages && \
 cp -r /tmp/git-gh-pages-TMP/css ./ && \
 cp -r /tmp/git-gh-pages-TMP/img ./ && \
 cp -r /tmp/git-gh-pages-TMP/js ./ && \
-mkdir -p ./node_modules/ && \
-cp -r /tmp/git-gh-pages-TMP/node_modules/girdle ./node_modules/ && \
 cp /tmp/git-gh-pages-TMP/index.html ./ && \
 cp /tmp/git-gh-pages-TMP/favicon.ico ./ && \
+cp -f /tmp/git-gh-pages-TMP/girdle.js ./js/ && \
 rm -R /tmp/git-gh-pages-TMP/ && \
 git add . && \
 git commit -m "Syncing gh-pages" && \
