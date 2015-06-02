@@ -2,29 +2,31 @@
 {
     "use strict";
     
-    var board = BOARD("board"),
-        zobrist_keys,
-        stalemate_by_rules,
-        evaler,
-        loading_el,
-        player1_el = G.cde("div", {c: "player player_white"}),
-        player2_el = G.cde("div", {c: "player player_black"}),
-        center_el  = G.cde("div", {c: "center_el"}),
-        rating_slider,
-        new_game_el,
-        setup_game_el,
-        starting_new_game,
-        retry_move_timer,
-        clock_manager,
-        pieces_moved,
-        startpos,
-        debugging = false,
-        legal_move_engine,
-        cur_pos_cmd,
-        game_history,
-        eval_depth = 8,
-        rating_font_style = "Impact,monospace,mono,sans-serif",
-        font_fit;
+    var board_el = G.cde("div");
+    var board = BOARD(board_el);
+    var zobrist_keys;
+    var stalemate_by_rules;
+    var evaler;
+    var loading_el;
+    var player1_el = G.cde("div", {c: "player player_white"});
+    var player2_el = G.cde("div", {c: "player player_black"});
+    var center_el  = G.cde("div", {c: "center_el"});
+    var rating_slider;
+    var new_game_el;
+    var setup_game_el;
+    var starting_new_game;
+    var retry_move_timer;
+    var clock_manager;
+    var pieces_moved;
+    var startpos;
+    var debugging = false;
+    var legal_move_engine;
+    var cur_pos_cmd;
+    var game_history;
+    var eval_depth = 8;
+    var rating_font_style = "Impact,monospace,mono,sans-serif";
+    var font_fit = FONT_FIT({fontFamily: rating_font_style});
+    var moves_el;
     
     function error(str)
     {
@@ -1334,84 +1336,7 @@
         board.el.parentNode.insertBefore(center_el, null);
     }
     
-    function hide_loading(do_not_start)
-    {
-        loading_el.classList.add("hidden");
-        if (!do_not_start) {
-            board.play();
-            G.events.trigger("gameUnpaused");
-        }
-    }
-    
-    function show_loading()
-    {
-        if (!loading_el) {
-            loading_el = G.cde("div", {t: "Loading...", c: "loading"});
-            
-            document.documentElement.appendChild(loading_el);
-        } else {
-            loading_el.classList.remove("hidden");
-        }
-        
-        pause_game();
-    }
-    
-    function init()
-    {
-        if (typeof Worker === "undefined") {
-            return alert("Sorry, Kingdom does not support this browser.");
-        }
-        
-        onresize();
-        
-        window.addEventListener("resize", onresize);
-        
-        show_loading();
-        
-        create_players();
-        
-        create_center();
-        
-        board.onmove = on_human_move;
-        
-        evaler = load_engine();
-        
-        evaler.send("uci", function onuci(str)
-        {
-            evaler.send("isready", function onready()
-            {
-                if (board.get_mode() === "wait") {
-                    start_new_game();
-                }
-            });
-        });
-    }
-    
-    font_fit = FONT_FIT({fontFamily: rating_font_style});
-    
-    window.addEventListener("keydown", function catch_key(e)
-    {
-        if (e.keyCode === 113) { /// F2
-            start_new_game();
-        }
-    });
-    
-    G.events.attach("move", function onmove(e)
-    {
-        var ply = game_history.length;
-        
-        if (!pieces_moved) {
-            G.events.trigger("firstMove");
-            pieces_moved = true;
-        }
-        
-        ///NOTE: board.turn has already switched.
-        game_history[ply] = {move: e.move, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
-        prep_eval(cur_pos_cmd, ply);
-    });
-    
-    
-    clock_manager = (function make_clocks()
+    function make_clocks()
     {
         var last_time,
             tick_timer,
@@ -1602,9 +1527,9 @@
         clock_manager.stop_timer = stop_timer;
         
         return clock_manager;
-    }());
+    };
     
-    rating_slider = function make_rating_slider()
+    function make_rating_slider()
     {
         var container = G.cde("div", {c: "ratingContainer"});
         var slider_el = G.cde("div", {c: "ratingSlider"});
@@ -1714,7 +1639,105 @@
         });
         
         return obj;
-    }();
+    };
+    
+    function make_moves_el()
+    {
+        moves_el = G.cde("div");
+        
+        function resize()
+        {
+            var size = board.board_details.width;
+            var rect = player2_el.getBoundingClientRect();
+            
+            console.log(size)
+            console.log(rect)
+        }
+        
+        G.events.attach("board_resize", resize);
+        
+        resize();
+    }
+    
+    function hide_loading(do_not_start)
+    {
+        loading_el.classList.add("hidden");
+        if (!do_not_start) {
+            board.play();
+            G.events.trigger("gameUnpaused");
+        }
+    }
+    
+    function show_loading()
+    {
+        if (!loading_el) {
+            loading_el = G.cde("div", {t: "Loading...", c: "loading"});
+            
+            document.documentElement.appendChild(loading_el);
+        } else {
+            loading_el.classList.remove("hidden");
+        }
+        
+        pause_game();
+    }
+    
+    function init()
+    {
+        if (typeof Worker === "undefined") {
+            return alert("Sorry, Kingdom does not support this browser.");
+        }
+        
+        document.body.appendChild(board_el);
+        
+        clock_manager = make_clocks();
+        
+        rating_slider = make_rating_slider();
+        
+        onresize();
+        
+        window.addEventListener("resize", onresize);
+        
+        show_loading();
+        
+        create_players();
+        
+        create_center();
+        
+        board.onmove = on_human_move;
+        
+        evaler = load_engine();
+        
+        evaler.send("uci", function onuci(str)
+        {
+            evaler.send("isready", function onready()
+            {
+                if (board.get_mode() === "wait") {
+                    start_new_game();
+                }
+            });
+        });
+    }
+    
+    window.addEventListener("keydown", function catch_key(e)
+    {
+        if (e.keyCode === 113) { /// F2
+            start_new_game();
+        }
+    });
+    
+    G.events.attach("move", function onmove(e)
+    {
+        var ply = game_history.length;
+        
+        if (!pieces_moved) {
+            G.events.trigger("firstMove");
+            pieces_moved = true;
+        }
+        
+        ///NOTE: board.turn has already switched.
+        game_history[ply] = {move: e.move, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
+        prep_eval(cur_pos_cmd, ply);
+    });
     
     init();
 }());

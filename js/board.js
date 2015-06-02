@@ -320,7 +320,7 @@ var BOARD = function board_init(el, options)
         board.el.style.width  = board_details.width  + "px";
         board.el.style.height = board_details.height + "px";
         
-        G.events.trigger("board_resize");
+        G.events.trigger("board_resize", {w: w, h: h});
     }
     
     function make_board_num(num)
