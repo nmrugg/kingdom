@@ -2,29 +2,33 @@
 {
     "use strict";
     
-    var board = BOARD("board"),
-        zobrist_keys,
-        stalemate_by_rules,
-        evaler,
-        loading_el,
-        player1_el = G.cde("div", {c: "player player_white"}),
-        player2_el = G.cde("div", {c: "player player_black"}),
-        center_el  = G.cde("div", {c: "center_el"}),
-        rating_slider,
-        new_game_el,
-        setup_game_el,
-        starting_new_game,
-        retry_move_timer,
-        clock_manager,
-        pieces_moved,
-        startpos,
-        debugging = false,
-        legal_move_engine,
-        cur_pos_cmd,
-        game_history,
-        eval_depth = 8,
-        rating_font_style = "Impact,monospace,mono,sans-serif",
-        font_fit;
+    var board_el = G.cde("div");
+    var board = BOARD(board_el);
+    var zobrist_keys;
+    var stalemate_by_rules;
+    var evaler;
+    var loading_el;
+    var player1_el = G.cde("div", {c: "player player_white player_left"});
+    var player2_el = G.cde("div", {c: "player player_black player_right"});
+    var center_el  = G.cde("div", {c: "center_el"});
+    var rating_slider;
+    var new_game_el;
+    var setup_game_el;
+    var starting_new_game;
+    var retry_move_timer;
+    var clock_manager;
+    var pieces_moved;
+    var startpos;
+    var debugging = false;
+    var legal_move_engine;
+    var cur_pos_cmd;
+    var game_history;
+    var eval_depth = 8;
+    var rating_font_style = "Impact,monospace,mono,sans-serif";
+    var font_fit = FONT_FIT({fontFamily: rating_font_style});
+    var moves_manager;
+    var layout = {};
+    var default_sd_time = "15:00";
     
     function error(str)
     {
@@ -248,25 +252,13 @@
         }
         
         el_width = Math.floor((window.innerWidth - width) / 2) - 10;
-        
-        player1_el.style.width = el_width + "px";
-        player2_el.style.width = el_width + "px";
-        
-        clock_manager.clock_els.w.style.width = el_width + "px";
-        clock_manager.clock_els.b.style.width = el_width + "px";
     }
-    
-    function resize_center()
-    {
-        center_el.style.width = calculate_board_size() + "px";
-    }
-    
     function onresize()
     {
         resize_board();
         resize_players();
-        resize_center();
         rating_slider.resize();
+        moves_manager.resize();
     }
     
     function get_legal_moves(pos, cb)
@@ -540,10 +532,11 @@
     {
         var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/),
             player = board.players[board.turn],
-            move,
+            uci,
             ponder,
             pos,
-            legal_moves = board.get_legal_moves();
+            legal_moves = board.get_legal_moves(),
+            san;
         
         if (board.get_mode() !== "play") {
             return;
@@ -562,18 +555,20 @@
                 error("Cannot find a legal move");
             }
             /// Just use the first legal move
-            move = legal_moves.uci[0];
+            uci = legal_moves.uci[0];
             ponder = "";
         } else {
-            move = res[1];
+            uci = res[1];
             ponder = res[2];
         }
         
         ///TODO: Allow ponder.
         player.engine.ponder_move = ponder;
         
-        board.move(move);
+        board.move(uci);
         set_cur_pos_cmd();
+        
+        san = board.get_san(uci)
         
         /// Clear legal moves to indicate that we are between moves. (This is used by the clock manager to determine if it should look call the flag.)
         board.set_legal_moves({});
@@ -588,7 +583,7 @@
             }
         });
         
-        G.events.trigger("move", {move: move, ponder: ponder});
+        G.events.trigger("move", {uci: uci, ponder: ponder, san: san});
     }
     
     function onthinking(str)
@@ -689,14 +684,14 @@
         }
     }
     
-    function on_human_move(move)
+    function on_human_move(uci, san)
     {
         set_cur_pos_cmd();
         
         ///NOTE: We need to get legal moves (even for AI) because we need to know if a move is castling or not.
         set_legal_moves(tell_engine_to_move);
         
-        G.events.trigger("move", {move: move});
+        G.events.trigger("move", {uci: uci, san: san});
     }
     
     function all_ready(cb)
@@ -942,7 +937,7 @@
                     }
                     
                     game_history = [{turn: board.turn, pos: "position " + startpos}];
-                    //debugger;
+                    
                     prep_eval(game_history[0].pos, 0);
                     
                     clock_manager.reset_clocks();
@@ -1185,6 +1180,11 @@
                     clock_manager.clear(player.color);
                 }
             }
+            
+            /// The moves box may need to be resized too.
+            if (moves_manager) {
+                moves_manager.resize();
+            }
         }
         
         function onchange()
@@ -1201,13 +1201,20 @@
     {
         function set_sd_time(time)
         {
-            var time_val;
+            var time_val,
+                using_el;
             
             if (typeof time === "undefined") {
                 time = player.els.sd.value;
+                using_el = true;
             }
             
             time_val = time_from_str(time);
+            
+            if (!time_val && using_el) {
+                player.els.sd.value = default_sd_time;
+                time_val = time_from_str(default_sd_time);
+            }
             
             if (time_val && time_val !== player.start_time) {
                 player.time = time_val;
@@ -1272,7 +1279,7 @@
             G.cde("option", {t: "Sudden Death", value: "sd", selected: player.time.type === "sd"}),
         ]);
         
-        var sd_el = G.cde("input", {type: "text", value: player.time.sd || "15:00"}, {all_on_changes: make_set_sd_time(player)});
+        var sd_el = G.cde("input", {c: "fixinput", type: "text", value: player.time.sd || default_sd_time}, {all_on_changes: make_set_sd_time(player)});
         
         sd_container.appendChild(G.cde("", [
             "Time: ",
@@ -1311,8 +1318,8 @@
         add_player_els(player1_el, board.players.w);
         add_player_els(player2_el, board.players.b);
         
-        board.el.parentNode.insertBefore(player1_el, board.el);
-        board.el.parentNode.insertBefore(player2_el, board.el.nextSibling);
+        layout.rows[1].cells[0].appendChild(player1_el);
+        layout.rows[1].cells[2].appendChild(player2_el);
         
         board.players.w.set_type("human");
         board.players.b.set_type("ai");
@@ -1331,93 +1338,16 @@
             setup_game_el,
         ]));
         
-        board.el.parentNode.insertBefore(center_el, null);
+        layout.rows[2].cells[1].appendChild(center_el);
     }
     
-    function hide_loading(do_not_start)
-    {
-        loading_el.classList.add("hidden");
-        if (!do_not_start) {
-            board.play();
-            G.events.trigger("gameUnpaused");
-        }
-    }
-    
-    function show_loading()
-    {
-        if (!loading_el) {
-            loading_el = G.cde("div", {t: "Loading...", c: "loading"});
-            
-            document.documentElement.appendChild(loading_el);
-        } else {
-            loading_el.classList.remove("hidden");
-        }
-        
-        pause_game();
-    }
-    
-    function init()
-    {
-        if (typeof Worker === "undefined") {
-            return alert("Sorry, Kingdom does not support this browser.");
-        }
-        
-        onresize();
-        
-        window.addEventListener("resize", onresize);
-        
-        show_loading();
-        
-        create_players();
-        
-        create_center();
-        
-        board.onmove = on_human_move;
-        
-        evaler = load_engine();
-        
-        evaler.send("uci", function onuci(str)
-        {
-            evaler.send("isready", function onready()
-            {
-                if (board.get_mode() === "wait") {
-                    start_new_game();
-                }
-            });
-        });
-    }
-    
-    font_fit = FONT_FIT({fontFamily: rating_font_style});
-    
-    window.addEventListener("keydown", function catch_key(e)
-    {
-        if (e.keyCode === 113) { /// F2
-            start_new_game();
-        }
-    });
-    
-    G.events.attach("move", function onmove(e)
-    {
-        var ply = game_history.length;
-        
-        if (!pieces_moved) {
-            G.events.trigger("firstMove");
-            pieces_moved = true;
-        }
-        
-        ///NOTE: board.turn has already switched.
-        game_history[ply] = {move: e.move, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
-        prep_eval(cur_pos_cmd, ply);
-    });
-    
-    
-    clock_manager = (function make_clocks()
+    function make_clocks()
     {
         var last_time,
             tick_timer,
             clock_els = {
-                w: G.cde("div", {c: "clock clock_white"}),
-                b: G.cde("div", {c: "clock clock_black"}),
+                w: G.cde("div", {c: "clock clock_white clock_left"}),
+                b: G.cde("div", {c: "clock clock_black clock_right"}),
             },
             clock_manager = {},
             timer_on;
@@ -1580,8 +1510,8 @@
             }
         };
         
-        board.el.parentNode.insertBefore(clock_els.w, board.el);
-        board.el.parentNode.insertBefore(clock_els.b, board.el.nextSibling);
+        layout.rows[2].cells[0].appendChild(clock_els.w);
+        layout.rows[2].cells[2].appendChild(clock_els.b);
         
         G.events.attach("gameUnpaused", start_timer);
         G.events.attach("firstMove", start_timer);
@@ -1602,9 +1532,9 @@
         clock_manager.stop_timer = stop_timer;
         
         return clock_manager;
-    }());
+    };
     
-    rating_slider = function make_rating_slider()
+    function make_rating_slider()
     {
         var container = G.cde("div", {c: "ratingContainer"});
         var slider_el = G.cde("div", {c: "ratingSlider"});
@@ -1666,11 +1596,8 @@
         
         obj.resize = function ()
         {
-            var board_rect = board.el.getBoundingClientRect();
-            container.style.top = board_rect.top + "px";
-            container.style.bottom = (window.innerHeight - board_rect.bottom) + "px";
-            container.style.right = (window.innerWidth - board_rect.left) + "px";
-            container.style.left = (board_rect.left - (board_rect.width / 16)) + "px";
+            container.style.width = (board.el.clientWidth / 16) + "px";
+            container.style.height = board.el.clientHeight + "px";
             ///NOTE: clientWidth/clientHeight gets the width without the board.
             canvas.width = container.clientWidth;
             canvas.height = container.clientHeight;
@@ -1691,7 +1618,7 @@
         
         container.appendChild(slider_el);
         
-        board.el.parentNode.insertBefore(container, board.el);
+        layout.center_cells[0].appendChild(container);
     
         G.events.attach("eval", function oneval(e)
         {
@@ -1711,10 +1638,279 @@
                     }
                 }
             }
+            
+            moves_manager.update_eval(e.ply, e.score, e.type, e.turn);
         });
         
         return obj;
-    }();
+    };
+    
+    function make_moves_el()
+    {
+        var moves_el = G.cde("div", {c: "movesTable"}),
+            container_el = G.cde("div", {c: "movesTableContainer"}),
+            rows,
+            plys,
+            cur_row,
+            offset_height;
+        
+        function add_move(color, san, time)
+        {
+            var move_data = {
+                san: san,
+                color: color,
+                time: time,
+                san_el:  G.cde("div", {c: "moveCell", t: san}),
+                eval_el: G.cde("div", {c: "moveCell", t: "\u00a0"}), /// \u00a0 is &nbsp;
+                time_el: G.cde("div", {c: "moveCell", t: time || "\u00a0"}),
+            },
+                need_to_add_placeholders,
+                scroll_pos;
+            
+            /// Placeholders are necessary to keep the table columns the proper width. It's only needed to fill out the first row.
+            function add_placeholding_els()
+            {
+                var placeholders = [],
+                    i,
+                    len = 3;
+                
+                for (i = 0; i < len; i += 1) {
+                    placeholders[i] = G.cde("div", {c: "moveCell", t: "\u00a0"});
+                    rows[cur_row].row_el.appendChild(placeholders[i]);
+                }
+                
+                rows[cur_row].placeholders = placeholders;
+            }
+            
+            if (!rows[cur_row]) {
+                rows[cur_row] = {
+                    w: {},
+                    b: {},
+                    row_el: G.cde("div", {c: "moveRow"})
+                };
+                rows[cur_row].row_el.appendChild(G.cde("div", {c: "moveNumCell", t: (cur_row + 1)}));
+                moves_el.appendChild(rows[cur_row].row_el);
+                need_to_add_placeholders = plys.length === 0;
+            } else if (rows[cur_row].placeholders) {
+                rows[cur_row].placeholders.forEach(function (el)
+                {
+                    if (el && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
+                delete rows[cur_row].placeholders;
+            }
+            
+            if (need_to_add_placeholders && color === "b") {
+                add_placeholding_els();
+                need_to_add_placeholders = false;
+            }
+            
+            rows[cur_row].row_el.appendChild(move_data.san_el);
+            rows[cur_row].row_el.appendChild(move_data.eval_el);
+            rows[cur_row].row_el.appendChild(move_data.time_el);
+            
+            if (need_to_add_placeholders) {
+                add_placeholding_els();
+            }
+            
+            rows[cur_row][color] = move_data;
+            plys.push(move_data);
+            
+            if (color === "b") {
+                cur_row += 1;
+            }
+            
+            scroll_pos = container_el.scrollHeight - offset_height;
+            
+            /// Scroll to the bottom to reveal new move (if necessary).
+            if (scroll_pos) {
+                container_el.scrollTop = scroll_pos;
+            }
+        }
+        
+        function update_eval(ply, score, type, turn)
+        {
+            var move_data = plys[ply - 1],
+                display_score;
+            
+            if (type === "cp") {
+                display_score = (score / 100).toFixed(2);
+            } else if (score === 0) {
+                if (turn === "w") {
+                    display_score = "0-1";
+                } else {
+                    display_score = "1-0";
+                }
+            } else {
+                display_score = "#" + score;
+            }
+            
+            if (move_data) {
+                move_data.eval_el.textContent = display_score;
+            }
+        }
+        
+        function reset_moves()
+        {
+            moves_el.innerHTML = "";
+            cur_row = 0;
+            rows = [];
+            plys = [];
+        }
+        
+        function resize()
+        {
+            var this_box = container_el.getBoundingClientRect(),
+                cell_box,
+                old_display = container_el.style.display;
+                
+            ///NOTE: We need to hide this for a moment to see what the height of the cell should be.
+            container_el.style.display = "none";
+            cell_box = layout.rows[1].cells[2].getBoundingClientRect();
+            container_el.style.display = old_display;
+            
+            container_el.style.height = (cell_box.height - this_box.top) + "px";
+            
+            offset_height = container_el.offsetHeight;
+        }
+        
+        moves_manager = {
+            add_move: add_move,
+            update_eval: update_eval,
+            resize: resize,
+        };
+        
+        layout.rows[1].cells[2].appendChild(container_el);
+        container_el.appendChild(moves_el);
+        
+        G.events.attach("newGameBegins", reset_moves);
+        
+        //resize();
+        
+        reset_moves();
+    }
+    
+    function hide_loading(do_not_start)
+    {
+        loading_el.classList.add("hidden");
+        if (!do_not_start) {
+            board.play();
+            G.events.trigger("gameUnpaused");
+        }
+    }
+    
+    function show_loading()
+    {
+        if (!loading_el) {
+            loading_el = G.cde("div", {t: "Loading...", c: "loading"});
+            
+            document.documentElement.appendChild(loading_el);
+        } else {
+            loading_el.classList.remove("hidden");
+        }
+        
+        pause_game();
+    }
+    
+    function create_table()
+    {
+        var table_info = [3, 3, 3];
+        
+        layout.table = G.cde("div", {c: "table"});
+        layout.rows = [];
+        
+        table_info.forEach(function oneach(count, row)
+        {
+            var i;
+            
+            layout.rows[row] = {
+                cells: [],
+            };
+            for (i = 0; i < count; i += 1) {
+                layout.rows[row].cells[i] = G.cde("div", {c: "td table_cell_" + row + "_" + i});
+                
+            }
+            layout.rows[row].el = G.cde("div", {c: "tr table_row_" + row}, layout.rows[row].cells);
+            layout.table.appendChild(layout.rows[row].el);
+        });
+        
+        layout.center_cells = [
+            G.cde("div", {c: "td center_td"}),
+            G.cde("div", {c: "td center_td"}),
+        ];
+        layout.center_cells[0].align = "right";
+        layout.center_cells[1].align = "left";
+        layout.center_row   = G.cde("div", {c: "tr center_tr"}, layout.center_cells);
+        layout.center_table = G.cde("div", {c: "table center_table"}, [layout.center_row]);
+        layout.rows[1].cells[1].appendChild(layout.center_table);
+    }
+    
+    function init()
+    {
+        if (typeof Worker === "undefined") {
+            return alert("Sorry, Kingdom does not support this browser.");
+        }
+        
+        create_table();
+        
+        document.body.appendChild(layout.table);
+        
+        layout.rows[1].cells[1].align = "center";
+        layout.center_cells[1].appendChild(board_el);
+        
+        clock_manager = make_clocks();
+        
+        rating_slider = make_rating_slider();
+        
+        window.addEventListener("resize", onresize);
+        
+        show_loading();
+        
+        create_players();
+        
+        create_center();
+        
+        make_moves_el();
+        
+        onresize();
+        
+        board.onmove = on_human_move;
+        
+        evaler = load_engine();
+        
+        evaler.send("uci", function onuci(str)
+        {
+            evaler.send("isready", function onready()
+            {
+                if (board.get_mode() === "wait") {
+                    start_new_game();
+                }
+            });
+        });
+    }
+    
+    window.addEventListener("keydown", function catch_key(e)
+    {
+        if (e.keyCode === 113) { /// F2
+            start_new_game();
+        }
+    });
+    
+    G.events.attach("move", function onmove(e)
+    {
+        var ply = game_history.length;
+        
+        if (!pieces_moved) {
+            G.events.trigger("firstMove");
+            pieces_moved = true;
+        }
+        
+        ///NOTE: board.turn has already switched.
+        game_history[ply] = {move: e.uci, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd, color: board.turn === "b" ? "w" : "b"};
+        prep_eval(cur_pos_cmd, ply);
+        moves_manager.add_move(game_history[ply].color, e.san);
+    });
     
     init();
 }());
