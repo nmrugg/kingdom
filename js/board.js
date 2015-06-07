@@ -719,6 +719,23 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function mark_ep(uci)
+    {
+        var index
+        
+        if (!legal_moves || !legal_moves.uci || !legal_moves.san) {
+            return;
+        }
+        
+        index = legal_moves.uci.indexOf(uci);
+        
+        if (legal_moves.san[index].indexOf("e.p.") === -1 && legal_moves.san[index].indexOf("(ep)") === -1) {
+            /// Add the notation after the move notation but before check(mate) symbol.
+            ///NOTE: A pawn could check(mate) and en passant at the same time, but not promote.
+            legal_moves.san[index] = legal_moves.san[index].substr(0, 4) + "e.p." + legal_moves.san[index].substr(4);
+        }
+    }
+    
     function move_piece(piece, square, uci)
     {
         var captured_piece,
@@ -740,6 +757,7 @@ var BOARD = function board_init(el, options)
             /// En passant
             if (!captured_piece && piece.type === "p" && piece.file !== square.file && ((piece.color === "w" && square.rank === board_details.ranks - 3) || (piece.color === "b" && square.rank === 2))) {
                 captured_piece = get_piece_from_rank_file(piece.rank, square.file);
+                mark_ep(uci);
             }
             
             if (captured_piece && captured_piece.id !== piece.id) {
