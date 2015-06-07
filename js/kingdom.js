@@ -28,6 +28,7 @@
     var font_fit = FONT_FIT({fontFamily: rating_font_style});
     var moves_el;
     var layout = {};
+    var default_sd_time = "15:00";
     
     function error(str)
     {
@@ -1179,11 +1180,9 @@
                 player.time_type = type;
                 
                 if (type === "sd") {
-                    //player.els.sd_container.style.visibility = "visible";
                     player.els.sd_container.style.display = "block";
                     player.set_sd_time();
                 } else {
-                    //player.els.sd_container.style.visibility = "hidden";
                     player.els.sd_container.style.display = "none";
                     player.time = "";
                     player.start_time = "";
@@ -1206,13 +1205,20 @@
     {
         function set_sd_time(time)
         {
-            var time_val;
+            var time_val,
+                using_el;
             
             if (typeof time === "undefined") {
                 time = player.els.sd.value;
+                using_el = true;
             }
             
             time_val = time_from_str(time);
+            
+            if (!time_val && using_el) {
+                player.els.sd.value = default_sd_time;
+                time_val = time_from_str(default_sd_time);
+            }
             
             if (time_val && time_val !== player.start_time) {
                 player.time = time_val;
@@ -1278,7 +1284,7 @@
             G.cde("option", {t: "Sudden Death", value: "sd", selected: player.time.type === "sd"}),
         ]);
         
-        var sd_el = G.cde("input", {type: "text", value: player.time.sd || "15:00"}, {all_on_changes: make_set_sd_time(player)});
+        var sd_el = G.cde("input", {type: "text", value: player.time.sd || default_sd_time}, {all_on_changes: make_set_sd_time(player)});
         
         sd_container.appendChild(G.cde("", [
             "Time: ",
