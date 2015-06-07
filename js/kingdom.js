@@ -1179,9 +1179,11 @@
                 player.time_type = type;
                 
                 if (type === "sd") {
+                    //player.els.sd_container.style.visibility = "visible";
                     player.els.sd_container.style.display = "block";
                     player.set_sd_time();
                 } else {
+                    //player.els.sd_container.style.visibility = "hidden";
                     player.els.sd_container.style.display = "none";
                     player.time = "";
                     player.start_time = "";
@@ -1265,6 +1267,7 @@
         ///
         var time_container = G.cde("div");
         var sd_container = G.cde("div");
+        var time_control_el = G.cde("div", [sd_container]);
         
         if (!player.time) {
             player.time = {};
@@ -1285,7 +1288,8 @@
         time_container.appendChild(G.cde("", [
             "Time type: ",
             time_type_el,
-            sd_container,
+            //sd_container,
+            time_control_el,
         ]));
         
         ///
@@ -1303,6 +1307,7 @@
             time_type: time_type_el,
             sd_container: sd_container,
             sd: sd_el,
+            time_control_el: time_control_el,
         };
     }
     
