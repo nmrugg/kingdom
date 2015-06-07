@@ -1642,9 +1642,9 @@
     function make_moves_el()
     {
         var moves_el = G.cde("div", {c: "movesTable"}),
-            rows = [],
-            plys = [],
-            cur_row = 0;
+            rows,
+            plys,
+            cur_row;
         
         function add_move(color, san, time)
         {
@@ -1705,6 +1705,8 @@
         {
             moves_el.innerHTML = "";
             cur_row = 0;
+            rows = [];
+            plys = [];
         }
         
         moves_manager = {
@@ -1714,10 +1716,9 @@
         
         layout.rows[1].cells[2].appendChild(moves_el);
         
-        
         G.events.attach("newGameBegins", reset_moves);
         
-        //G.events.attach("move", add_move);
+        reset_moves();
     }
     
     function hide_loading(do_not_start)
