@@ -1651,7 +1651,8 @@
             container_el = G.cde("div", {c: "movesTableContainer"}),
             rows,
             plys,
-            cur_row;
+            cur_row,
+            offset_height;
         
         function add_move(color, san, time)
         {
@@ -1663,8 +1664,10 @@
                 eval_el: G.cde("div", {c: "moveCell", t: "\u00a0"}), /// \u00a0 is &nbsp;
                 time_el: G.cde("div", {c: "moveCell", t: time || "\u00a0"}),
             },
-                need_to_add_placeholders;
+                need_to_add_placeholders,
+                scroll_pos;
             
+            /// Placeholders are necessary to keep the table columns the proper width. It's only needed to fill out the first row.
             function add_placeholding_els()
             {
                 var placeholders = [],
@@ -1717,6 +1720,13 @@
             if (color === "b") {
                 cur_row += 1;
             }
+            
+            scroll_pos = container_el.scrollHeight - offset_height;
+            
+            /// Scroll to the bottom to reveal new move (if necessary).
+            if (scroll_pos) {
+                container_el.scrollTop = scroll_pos;
+            }
         }
         
         function update_eval(ply, score, type, turn)
@@ -1761,6 +1771,8 @@
             container_el.style.display = old_display;
             
             container_el.style.height = (cell_box.height - this_box.top) + "px";
+            
+            offset_height = container_el.offsetHeight;
         }
         
         moves_manager = {
