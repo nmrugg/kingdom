@@ -258,6 +258,7 @@
         resize_board();
         resize_players();
         rating_slider.resize();
+        moves_manager.resize();
     }
     
     function get_legal_moves(pos, cb)
@@ -1179,6 +1180,11 @@
                     clock_manager.clear(player.color);
                 }
             }
+            
+            /// The moves box may need to be resized too.
+            if (moves_manager) {
+                moves_manager.resize();
+            }
         }
         
         function onchange()
@@ -1743,15 +1749,32 @@
             plys = [];
         }
         
+        function resize()
+        {
+            var this_box = container_el.getBoundingClientRect(),
+                cell_box,
+                old_display = container_el.style.display;
+                
+            ///NOTE: We need to hide this for a moment to see what the height of the cell should be.
+            container_el.style.display = "none";
+            cell_box = layout.rows[1].cells[2].getBoundingClientRect();
+            container_el.style.display = old_display;
+            
+            container_el.style.height = (cell_box.height - this_box.top) + "px";
+        }
+        
         moves_manager = {
             add_move: add_move,
-            update_eval: update_eval
+            update_eval: update_eval,
+            resize: resize,
         };
         
         layout.rows[1].cells[2].appendChild(container_el);
         container_el.appendChild(moves_el);
         
         G.events.attach("newGameBegins", reset_moves);
+        
+        //resize();
         
         reset_moves();
     }
@@ -1828,8 +1851,6 @@
         
         rating_slider = make_rating_slider();
         
-        onresize();
-        
         window.addEventListener("resize", onresize);
         
         show_loading();
@@ -1839,6 +1860,8 @@
         create_center();
         
         make_moves_el();
+        
+        onresize();
         
         board.onmove = on_human_move;
         

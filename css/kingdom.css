@@ -25,6 +25,7 @@ html, body {
 .movesTableContainer {
     position: relative;
     width: 100%;
+    overflow-y: scroll;
 }
 .movesTable {
     display: table;
