@@ -1727,7 +1727,7 @@
                     display_score = "1-0";
                 }
             } else {
-                display_score = score + "#";
+                display_score = "#" + score;
             }
             
             if (move_data) {
