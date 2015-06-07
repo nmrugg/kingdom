@@ -2,8 +2,24 @@ html, body {
     margin: 0;
 }
 
+.table {
+    display: table;
+    width: 100%;
+}
+.tr {
+    display: table-row;
+}
+.td {
+    display: table-cell;
+    width: 33%;
+    vertical-align: top;
+}
+.table_row_0 {
+    height: 0px;
+}
+
 .chess_board {
-    margin: 0 auto;
+    
 }
 
 .loading {
@@ -23,14 +39,23 @@ html, body {
     display: none;
 }
 
+.center_el {
+    margin: 0px 4px;
+}
+
+.player_left {
+    padding: 0 5px;
+}
+
+.player_right {
+    padding: 0 7px;
+}
+
+/*
 .player {
     position: absolute;
     width: 20%;
     top: 0;
-}
-
-.center_el {
-    margin: 0 auto;
 }
 
 .left_player {
@@ -54,30 +79,41 @@ html, body {
 .player_black {
     right: 0;
 }
+*/
 
 .clock {
+    /*
     position: absolute;
     bottom: 0;
+    */
     text-align: center;
-    font-family: impact, sans;
+    font-family: impact, monospace, sans;
     font-size: 35px;
     border: black 2px solid;
+    margin-left: 4px;
 }
 
 .clock_white {
-    left: 0;
+    /*left: 0;*/
     background-color: white;
     color: black;
 }
 
 .clock_black {
-    right: 0;
+    /*right: 0;*/
     background-color: black;
     color: white;
 }
 
+.clock_right {
+    /*right: 0;*/
+    background-color: black;
+    color: white;
+    padding: 0 2px;
+}
+
 .ratingContainer {
-    position: absolute;
+    /*position: absolute;*/
     background: rgb(235, 235, 235);
     border: 2px solid #3c2d21;
     border-bottom-left-radius: 4px;
@@ -94,4 +130,8 @@ html, body {
 
 .ratingCanvas {
     position: absolute;
+}
+
+.center_table, .center_td {
+    width: 0;
 }
