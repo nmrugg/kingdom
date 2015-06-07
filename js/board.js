@@ -662,11 +662,13 @@ var BOARD = function board_init(el, options)
         /// We make it async because of promotion.
         function record()
         {
+            var san = get_san(uci);
+            
             legal_moves = null;
             
             if (board.get_mode() === "play" && board.onmove) {
                 track_move(uci);
-                board.onmove(uci);
+                board.onmove(uci, san);
             }
             
             if (cb) {
@@ -1544,6 +1546,7 @@ var BOARD = function board_init(el, options)
         show_lines_of_power: show_lines_of_power,
         get_mode: get_mode,
         set_mode: set_mode,
+        get_san: get_san,
     /// onmove()
     /// onswitch()
     /// turn

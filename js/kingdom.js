@@ -26,7 +26,7 @@
     var eval_depth = 8;
     var rating_font_style = "Impact,monospace,mono,sans-serif";
     var font_fit = FONT_FIT({fontFamily: rating_font_style});
-    var moves_el;
+    var moves_manager;
     var layout = {};
     var default_sd_time = "15:00";
     
@@ -544,10 +544,11 @@
     {
         var res = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/),
             player = board.players[board.turn],
-            move,
+            uci,
             ponder,
             pos,
-            legal_moves = board.get_legal_moves();
+            legal_moves = board.get_legal_moves(),
+            san;
         
         if (board.get_mode() !== "play") {
             return;
@@ -566,18 +567,20 @@
                 error("Cannot find a legal move");
             }
             /// Just use the first legal move
-            move = legal_moves.uci[0];
+            uci = legal_moves.uci[0];
             ponder = "";
         } else {
-            move = res[1];
+            uci = res[1];
             ponder = res[2];
         }
         
         ///TODO: Allow ponder.
         player.engine.ponder_move = ponder;
         
-        board.move(move);
+        board.move(uci);
         set_cur_pos_cmd();
+        
+        san = board.get_san(uci)
         
         /// Clear legal moves to indicate that we are between moves. (This is used by the clock manager to determine if it should look call the flag.)
         board.set_legal_moves({});
@@ -592,7 +595,7 @@
             }
         });
         
-        G.events.trigger("move", {move: move, ponder: ponder});
+        G.events.trigger("move", {uci: uci, ponder: ponder, san: san});
     }
     
     function onthinking(str)
@@ -693,14 +696,14 @@
         }
     }
     
-    function on_human_move(move)
+    function on_human_move(uci, san)
     {
         set_cur_pos_cmd();
         
         ///NOTE: We need to get legal moves (even for AI) because we need to know if a move is castling or not.
         set_legal_moves(tell_engine_to_move);
         
-        G.events.trigger("move", {move: move});
+        G.events.trigger("move", {uci: uci, san: san});
     }
     
     function all_ready(cb)
@@ -1327,8 +1330,6 @@
         
         layout.rows[1].cells[0].appendChild(player1_el);
         layout.rows[1].cells[2].appendChild(player2_el);
-        //board.el.parentNode.insertBefore(player1_el, board.el);
-        //board.el.parentNode.insertBefore(player2_el, board.el.nextSibling);
         
         board.players.w.set_type("human");
         board.players.b.set_type("ai");
@@ -1347,7 +1348,6 @@
             setup_game_el,
         ]));
         
-        //board.el.parentNode.insertBefore(center_el, null);
         layout.rows[2].cells[1].appendChild(center_el);
     }
     
@@ -1520,8 +1520,6 @@
             }
         };
         
-        //board.el.parentNode.insertBefore(clock_els.w, board.el);
-        //board.el.parentNode.insertBefore(clock_els.b, board.el.nextSibling);
         layout.rows[2].cells[0].appendChild(clock_els.w);
         layout.rows[2].cells[2].appendChild(clock_els.b);
         
@@ -1608,14 +1606,6 @@
         
         obj.resize = function ()
         {
-            //var board_rect = board.el.getBoundingClientRect();
-            //console.log(board_rect)
-            //container.style.top = board_rect.top + "px";
-            //container.style.bottom = (window.innerHeight - board_rect.bottom) + "px";
-            //container.style.right = (window.innerWidth - board_rect.left) + "px";
-            //container.style.left = (board_rect.left - (board_rect.width / 16)) + "px";
-            //container.style.width = (board_rect.width / 16) + "px";
-            //container.style.height = board_rect.height - 4 + "px";
             container.style.width = (board.el.clientWidth / 16) + "px";
             container.style.height = board.el.clientHeight + "px";
             ///NOTE: clientWidth/clientHeight gets the width without the board.
@@ -1638,8 +1628,6 @@
         
         container.appendChild(slider_el);
         
-        //board.el.parentNode.insertBefore(container, board.el);
-        //layout.rows[1].cells[.appendChild(container);
         layout.center_cells[0].appendChild(container);
     
         G.events.attach("eval", function oneval(e)
@@ -1667,20 +1655,26 @@
     
     function make_moves_el()
     {
-        moves_el = G.cde("div");
+        var moves_el = G.cde("div");
         
-        function resize()
+        function add_move(e)
         {
-            var size = board.board_details.width;
-            //var rect = player2_el.getBoundingClientRect();
-            
-            console.log(size)
-            console.log(rect)
+            moves_el.appendChild(G.cde("div", {t: e.san}));
         }
         
-        G.events.attach("board_resize", resize);
+        function reset_moves()
+        {
+            moves_el.innerHTML = "";
+        }
         
-        resize();
+        moves_manager = {};
+        
+        layout.rows[1].cells[2].appendChild(moves_el);
+        
+        
+        G.events.attach("newGameBegins", reset_moves);
+        
+        G.events.attach("move", add_move);
     }
     
     function hide_loading(do_not_start)
@@ -1749,7 +1743,6 @@
         document.body.appendChild(layout.table);
         
         layout.rows[1].cells[1].align = "center";
-        //layout.rows[1].cells[1].appendChild(board_el);
         layout.center_cells[1].appendChild(board_el);
         
         clock_manager = make_clocks();
@@ -1765,6 +1758,8 @@
         create_players();
         
         create_center();
+        
+        make_moves_el();
         
         board.onmove = on_human_move;
         
@@ -1798,7 +1793,7 @@
         }
         
         ///NOTE: board.turn has already switched.
-        game_history[ply] = {move: e.move, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
+        game_history[ply] = {move: e.uci, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
         prep_eval(cur_pos_cmd, ply);
     });
     
