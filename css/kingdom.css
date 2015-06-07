@@ -1,5 +1,6 @@
 html, body {
     margin: 0;
+    font-family: arial, sans;
 }
 
 .table {
@@ -21,8 +22,24 @@ html, body {
 .chess_board {
     
 }
-.fixinput {
+.movesTable {
+    display: table;
+    width: 100%;
+}
+.moveRow {
+    display: table-row;
+}
+.moveCell {
+    display: table-cell;
+    width: 15%;
+}
+.moveNumCell {
+    display: table-cell;
+    width: 10%;
+}
+.plyNotation {
     width: 50%;
+    display: inline-block;
 }
 
 .loading {

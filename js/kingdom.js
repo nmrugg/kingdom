@@ -936,7 +936,7 @@
                     }
                     
                     game_history = [{turn: board.turn, pos: "position " + startpos}];
-                    //debugger;
+                    
                     prep_eval(game_history[0].pos, 0);
                     
                     clock_manager.reset_clocks();
@@ -1632,6 +1632,8 @@
                     }
                 }
             }
+            
+            moves_manager.update_eval(e.ply, e.score, e.type, e.turn);
         });
         
         return obj;
@@ -1639,26 +1641,83 @@
     
     function make_moves_el()
     {
-        var moves_el = G.cde("div");
+        var moves_el = G.cde("div", {c: "movesTable"}),
+            rows = [],
+            plys = [],
+            cur_row = 0;
         
-        function add_move(e)
+        function add_move(color, san, time)
         {
-            moves_el.appendChild(G.cde("div", {t: e.san}));
+            var move_data = {
+                san: san,
+                color: color,
+                time: time,
+                san_el:  G.cde("div", {c: "moveCell", t: san}),
+                eval_el: G.cde("div", {c: "moveCell"}),
+                time_el: G.cde("div", {c: "moveCell", t: time || ""}),
+            };
+            
+            if (!rows[cur_row]) {
+                rows[cur_row] = {
+                    w: {},
+                    b: {},
+                    row_el: G.cde("div", {c: "moveRow"})
+                };
+                rows[cur_row].row_el.appendChild(G.cde("div", {c: "moveNumCell", t: (cur_row + 1)}));
+                moves_el.appendChild(rows[cur_row].row_el);
+            }
+            
+            rows[cur_row].row_el.appendChild(move_data.san_el);
+            rows[cur_row].row_el.appendChild(move_data.eval_el);
+            rows[cur_row].row_el.appendChild(move_data.time_el);
+            
+            rows[cur_row][color] = move_data;
+            plys.push(move_data);
+            
+            if (color === "b") {
+                cur_row += 1;
+            }
+        }
+        
+        function update_eval(ply, score, type, turn)
+        {
+            var move_data = plys[ply - 1],
+                display_score;
+            
+            if (type === "cp") {
+                display_score = (score / 100).toFixed(2);
+            } else if (score === 0) {
+                if (turn === "w") {
+                    display_score = "0-1";
+                } else {
+                    display_score = "1-0";
+                }
+            } else {
+                display_score = score + "#";
+            }
+            
+            if (move_data) {
+                move_data.eval_el.textContent = display_score;
+            }
         }
         
         function reset_moves()
         {
             moves_el.innerHTML = "";
+            cur_row = 0;
         }
         
-        moves_manager = {};
+        moves_manager = {
+            add_move: add_move,
+            update_eval: update_eval
+        };
         
         layout.rows[1].cells[2].appendChild(moves_el);
         
         
         G.events.attach("newGameBegins", reset_moves);
         
-        G.events.attach("move", add_move);
+        //G.events.attach("move", add_move);
     }
     
     function hide_loading(do_not_start)
@@ -1777,8 +1836,9 @@
         }
         
         ///NOTE: board.turn has already switched.
-        game_history[ply] = {move: e.uci, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd};
+        game_history[ply] = {move: e.uci, ponder: e.ponder, turn: board.turn, pos: cur_pos_cmd, color: board.turn === "b" ? "w" : "b"};
         prep_eval(cur_pos_cmd, ply);
+        moves_manager.add_move(game_history[ply].color, e.san);
     });
     
     init();
