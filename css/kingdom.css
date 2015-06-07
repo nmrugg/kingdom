@@ -22,8 +22,13 @@ html, body {
 .chess_board {
     
 }
+.movesTableContainer {
+    position: relative;
+    width: 100%;
+}
 .movesTable {
     display: table;
+    position: absolute;
     width: 100%;
 }
 .moveRow {
