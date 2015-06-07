@@ -252,24 +252,11 @@
         }
         
         el_width = Math.floor((window.innerWidth - width) / 2) - 10;
-        
-        //player1_el.style.width = el_width + "px";
-        //player2_el.style.width = el_width + "px";
-        
-        //clock_manager.clock_els.w.style.width = el_width + "px";
-        //clock_manager.clock_els.b.style.width = el_width + "px";
     }
-    
-    function resize_center()
-    {
-        //center_el.style.width = calculate_board_size() + "px";
-    }
-    
     function onresize()
     {
         resize_board();
         resize_players();
-        resize_center();
         rating_slider.resize();
     }
     
@@ -1276,7 +1263,6 @@
         ///
         var time_container = G.cde("div");
         var sd_container = G.cde("div");
-        var time_control_el = G.cde("div", [sd_container]);
         
         if (!player.time) {
             player.time = {};
@@ -1287,7 +1273,7 @@
             G.cde("option", {t: "Sudden Death", value: "sd", selected: player.time.type === "sd"}),
         ]);
         
-        var sd_el = G.cde("input", {type: "text", value: player.time.sd || default_sd_time}, {all_on_changes: make_set_sd_time(player)});
+        var sd_el = G.cde("input", {c: "fixinput", type: "text", value: player.time.sd || default_sd_time}, {all_on_changes: make_set_sd_time(player)});
         
         sd_container.appendChild(G.cde("", [
             "Time: ",
@@ -1297,8 +1283,7 @@
         time_container.appendChild(G.cde("", [
             "Time type: ",
             time_type_el,
-            //sd_container,
-            time_control_el,
+            sd_container,
         ]));
         
         ///
@@ -1316,7 +1301,6 @@
             time_type: time_type_el,
             sd_container: sd_container,
             sd: sd_el,
-            time_control_el: time_control_el,
         };
     }
     

@@ -21,6 +21,9 @@ html, body {
 .chess_board {
     
 }
+.fixinput {
+    width: 50%;
+}
 
 .loading {
     position: absolute;
