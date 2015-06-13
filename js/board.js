@@ -454,7 +454,6 @@ var BOARD = function board_init(el, options)
             } else { /// It's a piece.
                 if (create_pieces) {
                     piece = {};
-                    piece.type = letter.toLowerCase();
                     /// Is it white?
                     if (/[A-Z]/.test(letter)) {
                         piece.color = "w";
@@ -465,9 +464,11 @@ var BOARD = function board_init(el, options)
                     board.pieces[piece_count] = piece;
                 }
                 
-                /// We do, however, want to set the starting rank and file.
+                /// We do, however, always need to set the starting rank and file.
                 board.pieces[piece_count].rank = rank;
                 board.pieces[piece_count].file = file;
+                /// We also need to set the type, in case it was a pawn that promoted.
+                board.pieces[piece_count].type = letter.toLowerCase();
                 
                 file += 1;
                 id += 1;
@@ -725,11 +726,22 @@ var BOARD = function board_init(el, options)
         return legal_moves.san[legal_moves.uci.indexOf(uci)];
     }
     
+    function set_image(piece)
+    {
+        var img = get_piece_img(piece);
+        
+        /// Don't set it if it's the same.
+        if (piece.backgroundImage !== img) {
+            piece.backgroundImage = img;
+            piece.el.style.backgroundImage = img;
+        }
+    }
+    
     function promote_piece(piece, uci)
     {
         if (piece && uci.length === 5 && /[qrbn]/.test(uci[4])) {
             piece.type = uci[4];
-            piece.el.style.backgroundImage = get_piece_img(piece);
+            set_image(piece);
         }
     }
     
@@ -896,13 +908,10 @@ var BOARD = function board_init(el, options)
         load_pieces_from_start(fen);
         
         board.pieces.forEach(function oneach(piece)
-        {
-            if (!piece.el) {
+        {if (!piece.el) {
                 piece.el = document.createElement("div");
                 
                 piece.el.classList.add("piece");
-                
-                piece.el.style.backgroundImage = get_piece_img(piece);
                 
                 add_piece_events(piece);
                 
@@ -910,8 +919,13 @@ var BOARD = function board_init(el, options)
                 squares[0][0].appendChild(piece.el);
             }
             
+            /// If the pieces were already on the board from a previous game, a pawn may have promoted.
+            set_image(piece);
+            
             /// If the pieces were already on the board from a previous game, they may have been captured.
-            release(piece);
+            if (piece.captured) {
+                release(piece);
+            }
             
             set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
