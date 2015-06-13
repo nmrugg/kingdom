@@ -20,7 +20,8 @@ var BOARD = function board_init(el, options)
         legal_moves,
         arrow_manager,
         dragging_arrow = {},
-        mode = "setup";
+        mode = "setup",
+        last_fen;
     
     function num_to_alpha(num)
     {
@@ -418,18 +419,24 @@ var BOARD = function board_init(el, options)
         var fen_pieces = fen.match(/^\S+/),
             rank = 7,
             file = 0,
-            id = 0;
+            id = 0,
+            piece_count = 0,
+            create_pieces;
         
-        if (board.pieces) {
-            board.pieces.forEach(function oneach(piece)
-            {
-                if (piece.el && piece.el.parentNode) {
-                    piece.el.parentNode.removeChild(piece.el);
-                }
-                
-            });
+        if (fen !== last_fen) {
+            create_pieces = true;
+            if (board.pieces) {
+                board.pieces.forEach(function oneach(piece)
+                {
+                    if (piece.el && piece.el.parentNode) {
+                        piece.el.parentNode.removeChild(piece.el);
+                    }
+                    
+                });
+            }
+            board.pieces = [];
         }
-        board.pieces = [];
+        last_fen = fen;
         
         if (!fen_pieces) {
             error("Bad position: " + pos);
@@ -444,22 +451,27 @@ var BOARD = function board_init(el, options)
                 file = 0;
             } else if (/\d/.test(letter)) {
                 file += parseInt(letter, 10);
-            } else {
-                /// It's a piece.
-                piece = {};
-                piece.type = letter.toLowerCase();
-                /// Is it white?
-                if (/[A-Z]/.test(letter)) {
-                    piece.color = "w";
-                } else {
-                    piece.color = "b";
+            } else { /// It's a piece.
+                if (create_pieces) {
+                    piece = {};
+                    piece.type = letter.toLowerCase();
+                    /// Is it white?
+                    if (/[A-Z]/.test(letter)) {
+                        piece.color = "w";
+                    } else {
+                        piece.color = "b";
+                    }
+                    piece.id = id;
+                    board.pieces[piece_count] = piece;
                 }
-                piece.rank = rank;
-                piece.file = file;
-                piece.id = id;
-                board.pieces[board.pieces.length] = piece;
+                
+                /// We do, however, want to set the starting rank and file.
+                board.pieces[piece_count].rank = rank;
+                board.pieces[piece_count].file = file;
+                
                 file += 1;
                 id += 1;
+                piece_count += 1;
             }
         });
     }
@@ -893,10 +905,14 @@ var BOARD = function board_init(el, options)
                 piece.el.style.backgroundImage = get_piece_img(piece);
                 
                 add_piece_events(piece);
+                
+                /// We just put them all in the bottom left corner and move the position.
+                squares[0][0].appendChild(piece.el);
             }
             
-            /// We just put them all in the bottom left corner and move the position.
-            squares[0][0].appendChild(piece.el);
+            /// If the pieces were already on the board from a previous game, they may have been captured.
+            release(piece);
+            
             set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
         
@@ -972,6 +988,12 @@ var BOARD = function board_init(el, options)
     {
         piece.captured = true;
         piece.el.classList.add("captured");
+    }
+    
+    function release(piece)
+    {
+        delete piece.captured;
+        piece.el.classList.remove("captured");
     }
     
     function move_piece_uci(uci)
