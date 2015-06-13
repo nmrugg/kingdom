@@ -1660,9 +1660,9 @@
                 san: san,
                 color: color,
                 time: time,
-                san_el:  G.cde("div", {c: "moveCell", t: san}),
-                eval_el: G.cde("div", {c: "moveCell", t: "\u00a0"}), /// \u00a0 is &nbsp;
-                time_el: G.cde("div", {c: "moveCell", t: time || "\u00a0"}),
+                san_el:  G.cde("div", {c: "moveCell moveSAN move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: san}),
+                eval_el: G.cde("div", {c: "moveCell moveEval move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: "\u00a0"}), /// \u00a0 is &nbsp;
+                time_el: G.cde("div", {c: "moveCell moveTime move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: time || "\u00a0"}),
             },
                 need_to_add_placeholders,
                 scroll_pos;
@@ -1688,7 +1688,7 @@
                     b: {},
                     row_el: G.cde("div", {c: "moveRow"})
                 };
-                rows[cur_row].row_el.appendChild(G.cde("div", {c: "moveNumCell", t: (cur_row + 1)}));
+                rows[cur_row].row_el.appendChild(G.cde("div", {c: "moveNumCell moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: (cur_row + 1)}));
                 moves_el.appendChild(rows[cur_row].row_el);
                 need_to_add_placeholders = plys.length === 0;
             } else if (rows[cur_row].placeholders) {

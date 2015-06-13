@@ -1,6 +1,6 @@
 html, body {
     margin: 0;
-    font-family: arial, sans;
+    font-family: lato, arial, sans;
 }
 
 .table {
@@ -30,11 +30,14 @@ html, body {
     position: relative;
     width: 100%;
     overflow-y: scroll;
+    text-align: right;
 }
 .movesTable {
     display: table;
     position: absolute;
     width: 100%;
+    font-family: "lato light", arial, sans;
+    font-size: 17px;
 }
 .moveRow {
     display: table-row;
@@ -42,11 +45,35 @@ html, body {
 .moveCell {
     display: table-cell;
     width: 15%;
+    padding: 4px 0;
+    vertical-align: middle;
 }
 .moveNumCell {
     display: table-cell;
     width: 10%;
+    color: #888;
+    text-align: center;
+    border-right: 1px solid #aaa;
+    padding: 4px 0;
+    font-size: 15px;
+    vertical-align: middle;
 }
+.moveSAN {
+    font-weight: bold;
+}
+.moveb {
+    background-color: rgb(220, 220, 220);
+}
+.moveRowEven.moveb {
+    background-color: rgb(210, 210, 210);
+}
+.movew, .moveNumCell {
+    background-color: rgb(250, 250, 255);
+}
+.moveRowOdd.movew, .moveNumCell.moveRowOdd {
+    background-color: rgb(241, 241, 254);
+}
+
 .plyNotation {
     width: 50%;
     display: inline-block;
