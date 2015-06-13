@@ -20,7 +20,8 @@ var BOARD = function board_init(el, options)
         legal_moves,
         arrow_manager,
         dragging_arrow = {},
-        mode = "setup";
+        mode = "setup",
+        last_fen;
     
     function num_to_alpha(num)
     {
@@ -418,18 +419,24 @@ var BOARD = function board_init(el, options)
         var fen_pieces = fen.match(/^\S+/),
             rank = 7,
             file = 0,
-            id = 0;
+            id = 0,
+            piece_count = 0,
+            create_pieces;
         
-        if (board.pieces) {
-            board.pieces.forEach(function oneach(piece)
-            {
-                if (piece.el && piece.el.parentNode) {
-                    piece.el.parentNode.removeChild(piece.el);
-                }
-                
-            });
+        if (fen !== last_fen) {
+            create_pieces = true;
+            if (board.pieces) {
+                board.pieces.forEach(function oneach(piece)
+                {
+                    if (piece.el && piece.el.parentNode) {
+                        piece.el.parentNode.removeChild(piece.el);
+                    }
+                    
+                });
+            }
+            board.pieces = [];
         }
-        board.pieces = [];
+        last_fen = fen;
         
         if (!fen_pieces) {
             error("Bad position: " + pos);
@@ -444,22 +451,28 @@ var BOARD = function board_init(el, options)
                 file = 0;
             } else if (/\d/.test(letter)) {
                 file += parseInt(letter, 10);
-            } else {
-                /// It's a piece.
-                piece = {};
-                piece.type = letter.toLowerCase();
-                /// Is it white?
-                if (/[A-Z]/.test(letter)) {
-                    piece.color = "w";
-                } else {
-                    piece.color = "b";
+            } else { /// It's a piece.
+                if (create_pieces) {
+                    piece = {};
+                    /// Is it white?
+                    if (/[A-Z]/.test(letter)) {
+                        piece.color = "w";
+                    } else {
+                        piece.color = "b";
+                    }
+                    piece.id = id;
+                    board.pieces[piece_count] = piece;
                 }
-                piece.rank = rank;
-                piece.file = file;
-                piece.id = id;
-                board.pieces[board.pieces.length] = piece;
+                
+                /// We do, however, always need to set the starting rank and file.
+                board.pieces[piece_count].rank = rank;
+                board.pieces[piece_count].file = file;
+                /// We also need to set the type, in case it was a pawn that promoted.
+                board.pieces[piece_count].type = letter.toLowerCase();
+                
                 file += 1;
                 id += 1;
+                piece_count += 1;
             }
         });
     }
@@ -713,11 +726,22 @@ var BOARD = function board_init(el, options)
         return legal_moves.san[legal_moves.uci.indexOf(uci)];
     }
     
+    function set_image(piece)
+    {
+        var img = get_piece_img(piece);
+        
+        /// Don't set it if it's the same.
+        if (piece.backgroundImage !== img) {
+            piece.backgroundImage = img;
+            piece.el.style.backgroundImage = img;
+        }
+    }
+    
     function promote_piece(piece, uci)
     {
         if (piece && uci.length === 5 && /[qrbn]/.test(uci[4])) {
             piece.type = uci[4];
-            piece.el.style.backgroundImage = get_piece_img(piece);
+            set_image(piece);
         }
     }
     
@@ -884,19 +908,25 @@ var BOARD = function board_init(el, options)
         load_pieces_from_start(fen);
         
         board.pieces.forEach(function oneach(piece)
-        {
-            if (!piece.el) {
+        {if (!piece.el) {
                 piece.el = document.createElement("div");
                 
                 piece.el.classList.add("piece");
                 
-                piece.el.style.backgroundImage = get_piece_img(piece);
-                
                 add_piece_events(piece);
+                
+                /// We just put them all in the bottom left corner and move the position.
+                squares[0][0].appendChild(piece.el);
             }
             
-            /// We just put them all in the bottom left corner and move the position.
-            squares[0][0].appendChild(piece.el);
+            /// If the pieces were already on the board from a previous game, a pawn may have promoted.
+            set_image(piece);
+            
+            /// If the pieces were already on the board from a previous game, they may have been captured.
+            if (piece.captured) {
+                release(piece);
+            }
+            
             set_piece_pos(piece, {rank: piece.rank, file: piece.file});
         });
         
@@ -972,6 +1002,12 @@ var BOARD = function board_init(el, options)
     {
         piece.captured = true;
         piece.el.classList.add("captured");
+    }
+    
+    function release(piece)
+    {
+        delete piece.captured;
+        piece.el.classList.remove("captured");
     }
     
     function move_piece_uci(uci)
