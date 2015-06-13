@@ -1645,6 +1645,12 @@
         return obj;
     };
     
+    function clean_san(san)
+    {
+        /// \u2011 is a non-breaking hyphen (useful for O-O-O).
+        return san.replace(/-/g, "\u2011");
+    }
+    
     function make_moves_el()
     {
         var moves_el = G.cde("div", {c: "movesTable"}),
@@ -1660,7 +1666,7 @@
                 san: san,
                 color: color,
                 time: time,
-                san_el:  G.cde("div", {c: "moveCell moveSAN move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: san}),
+                san_el:  G.cde("div", {c: "moveCell moveSAN move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: clean_san(san)}),
                 eval_el: G.cde("div", {c: "moveCell moveEval move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: "\u00a0"}), /// \u00a0 is &nbsp;
                 time_el: G.cde("div", {c: "moveCell moveTime move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: time || "\u00a0"}),
             },
