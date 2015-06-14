@@ -610,7 +610,7 @@
     {
         /// On a timed game, if the player has more than 20 secs per depth, then limit to that depth.
         /// We don't want to always force an ai to use a depth because it may take too long when time is low.
-        return player.engine.depth && (player.time_type === "none" || (player.time > player.engine.depth * 20000));
+        return player.engine.depth && (!player.has_time || (player.time > player.engine.depth * 20000));
     }
     
     function tell_engine_to_move()
@@ -654,30 +654,22 @@
                 }, 100);
             }
             
-            //uciCmd("go " + (time.depth ? "depth " + time.depth : "") + " wtime " + time.wtime + " winc " + time.winc + " btime " + time.btime + " binc " + time.binc);
-            
-            //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 1800000 btime 1800000" , onengine_move, onthinking);
-            //engine.send("go " + (typeof engine.depth !== "undefined" ? "depth " + engine.depth : "") + " wtime 200000 btime 200000" , onengine_move, onthinking);
-            if (board.players.w.time_type === "none") {
-                wtime = tweak_default_time(board.players.w);
-            } else {
+            if (board.players.w.has_time) {
                 wtime = board.players.w.time;
+            } else {
+                wtime = tweak_default_time(board.players.w);
                 
             }
-            if (board.players.b.time_type === "none") {
-                btime = tweak_default_time(board.players.b);
-            } else {
+            if (board.players.b.has_time) {
                 btime = board.players.b.time;
+            } else {
+                btime = tweak_default_time(board.players.b);
             }
             
-            /// If there's no time limit, limit the depth on some players.
-            ///NOTE: There's no reason not to limit depth 1 since it's always fast.
-            //if (player.time_type === "none" || Number(player.engine.depth) === 1) {
             if (use_depth(player)) {
                 depth = player.engine.depth;
             }
             
-            //depth = 1;
             player.engine.send(cur_pos_cmd);
             player.engine.send("go " + (typeof depth !== "undefined" ? "depth " + depth : "") + " wtime " + wtime + " btime " + btime , onengine_move, onthinking);
             return true;
@@ -1179,6 +1171,8 @@
                     player.start_time = "";
                     clock_manager.clear(player.color);
                 }
+                /// This is faster than comparing a string.
+                player.has_time = type !== "none";
             }
             
             /// The moves box may need to be resized too.
@@ -1362,23 +1356,26 @@
             diff = now - last_time;
             last_time = now;
             
-            if (player.time_type !== "none") {
-                legal_moves = board.get_legal_moves();
+            if (player.has_time) {
                 player.time -= diff;
                 update_clock(player.color);
                 /// Has someone's time run out?
-                /// Also, make sure that the system has time to check to see if the game has already ended (either by checkmake or stalemate) by checking for legal moves.
-                if (player.time < 0 && (legal_moves && legal_moves.uci && legal_moves.uci.length)) {
-                    /// If the player with time is almost beaten (or the game is almost a stalemate) call it a stalemate.
-                    if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
-                        alert("Stalemate: Player with time has insufficient material");
-                    } else {
-                        alert((player.color === "w" ? "White" : "Black") + " loses on time.");
+                if (player.time < 0) {
+                    legal_moves = board.get_legal_moves();
+                    /// Also, make sure that the system has time to check to see if the game has already ended (either by checkmake or stalemate) by checking for legal moves.
+                    if (legal_moves && legal_moves.uci && legal_moves.uci.length && board.get_mode() === "play") {
+                        /// Stop player from moving.
+                        stop_game();
+                        /// Disable board play.
+                        pause_game();
+                        
+                        /// If the player with time is almost beaten (or the game is almost a stalemate) call it a stalemate.
+                        if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
+                            alert("Stalemate: Player with time has insufficient material");
+                        } else {
+                            alert((player.color === "w" ? "White" : "Black") + " loses on time.");
+                        }
                     }
-                    /// Stop player from moving.
-                    stop_game();
-                    /// Disable board play.
-                    pause_game();
                 }
             }
         }
@@ -1491,7 +1488,7 @@
         function reset_clock(color)
         {
             var player = board.players[color];
-            if (player.time_type !== "none") {
+            if (player.has_time) {
                 player.time = player.start_time;
                 clock_manager.update_clock(player.color)
             }
