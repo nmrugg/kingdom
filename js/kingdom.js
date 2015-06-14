@@ -1676,7 +1676,9 @@
                 time = 0;
             }
             
-            if (time < 1000) { /// Less than 1 sec
+            if (time < 100) { /// Less than 1 sec
+                res = time + "ms";
+            } else if (time < 1000) { /// Less than 1 sec
                 res = ((Math.round(time / 100)) / 10) + "s";
             } else if (time < 60000) { /// Less than 1 minute
                 res = Math.round(time / 1000) + "s";
