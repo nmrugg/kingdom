@@ -1195,26 +1195,7 @@
     {
         function set_sd_time(time)
         {
-            var time_val,
-                using_el;
-            
-            if (typeof time === "undefined") {
-                time = player.els.sd.value;
-                using_el = true;
-            }
-            
-            time_val = time_from_str(time);
-            
-            if (!time_val && using_el) {
-                player.els.sd.value = default_sd_time;
-                time_val = time_from_str(default_sd_time);
-            }
-            
-            if (time_val && time_val !== player.start_time) {
-                player.time = time_val;
-                player.start_time = time_val;
-                clock_manager.update_clock(player.color);
-            }
+            clock_manager.set_time(player.color, "sd", {time: time});
         }
         
         function onchange()
@@ -1495,6 +1476,48 @@
             }
         }
         
+        function set_start_time(player, time)
+        {
+            player.start_time = time;
+            player.move_start_time = time;
+        }
+        
+        function set_sd_time(color, time)
+        {
+            var time_val,
+                using_el,
+                player = board.players[color];
+            
+            if (typeof time === "undefined") {
+                time = player.els.sd.value;
+                using_el = true;
+            }
+            
+            time_val = time_from_str(time);
+            
+            if (!time_val && using_el) {
+                player.els.sd.value = default_sd_time;
+                time_val = time_from_str(default_sd_time);
+            }
+            
+            if (time_val && time_val !== player.start_time) {
+                player.time = time_val;
+                set_start_time(player, time_val);
+                update_clock(color);
+            }
+        }
+        
+        function set_time(color, type, options)
+        {
+            options = options || {};
+            
+            if (type === "sd") {
+                set_sd_time(color, options.time);
+            } else if (type === "none") {
+                
+            }
+        }
+        
         clock_manager.reset_clocks = function ()
         {
             reset_clock("w");
@@ -1532,6 +1555,8 @@
         
         clock_manager.start_timer = start_timer;
         clock_manager.stop_timer = stop_timer;
+        
+        clock_manager.set_time = set_time;
         
         return clock_manager;
     };
