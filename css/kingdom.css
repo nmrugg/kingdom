@@ -37,7 +37,7 @@ html, body {
     position: absolute;
     width: 100%;
     font-family: "Lato light", arial, sans;
-    font-size: 17px;
+    font-size: 14px;
 }
 .moveRow {
     display: table-row;
@@ -55,7 +55,7 @@ html, body {
     text-align: center;
     border-right: 1px solid #aaa;
     padding: 4px 0;
-    font-size: 14px;
+    font-size: 13px;
     vertical-align: middle;
 }
 .moveSAN {
