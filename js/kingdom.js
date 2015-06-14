@@ -617,7 +617,7 @@
     {
         ///NOTE: Without time, it thinks really fast. So, we give it a something to make it move reasonably quickly.
         ///      This time is also tweaked based on the level.
-        var default_time = 1000 * 60, /// 1 minute
+        var default_time = 1200 * 60, /// 1 minute
             wtime,
             btime,
             depth,
