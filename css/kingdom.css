@@ -174,7 +174,7 @@ html, body {
 }
 
 .ratingContainer {
-    /*position: absolute;*/
+    position: relative;
     background: rgb(235, 235, 235);
     border: 2px solid #3c2d21;
     border-bottom-left-radius: 4px;
@@ -191,6 +191,7 @@ html, body {
 
 .ratingCanvas {
     position: absolute;
+    left: 0;
 }
 
 .center_table, .center_td {
