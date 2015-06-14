@@ -1550,6 +1550,7 @@
         {
             if (clock_els[color]) {
                 clock_els[color].textContent = "--";
+                delete board.players[color].move_start_time;
             }
         };
         
