@@ -641,7 +641,9 @@ var BOARD = function board_init(el, options)
         function close_window()
         {
             document.body.removeChild(mod_win);
-            board.set_mode(old_mode);
+            if (!options.change_mode) {
+                board.set_mode(old_mode);
+            }
             delete board.close_modular_window;
             window.removeEventListener("keydown", listen_for_close);
         }
@@ -652,9 +654,12 @@ var BOARD = function board_init(el, options)
                 return setTimeout(open_window, 200);
             }
             board.close_modular_window = close_window;
-            old_mode = board.get_mode();
+            
             document.body.appendChild(mod_win);
-            board.set_mode("waiting_for_modular_window");
+            if (!options.change_mode) {
+                old_mode = board.get_mode();
+                board.set_mode("waiting_for_modular_window");
+            }
         }
         
         function listen_for_close(e)
@@ -684,6 +689,8 @@ var BOARD = function board_init(el, options)
             if (options.open) {
                 open_window();
             }
+        } else {
+            options = {};
         }
         
         return {

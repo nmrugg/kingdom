@@ -29,6 +29,7 @@
     var moves_manager;
     var layout = {};
     var default_sd_time = "15:00";
+    var showing_loading;
     
     function error(str)
     {
@@ -1900,7 +1901,11 @@
     
     function hide_loading(do_not_start)
     {
-        loading_el.classList.add("hidden");
+        if (typeof board.close_modular_window === "function") {
+            board.close_modular_window();
+        }
+        showing_loading = false;
+        
         if (!do_not_start) {
             board.play();
             G.events.trigger("gameUnpaused");
@@ -1909,15 +1914,17 @@
     
     function show_loading()
     {
-        if (!loading_el) {
-            loading_el = G.cde("div", {t: "Loading...", c: "loading"});
+        if (!showing_loading) {
+            showing_loading = true;
+            board.create_modular_window({
+                content: G.cde("div", {t: "Loading...", c: "loading"}),
+                cancelable: false,
+                open: true,
+                change_mode: false,
+            });
             
-            document.documentElement.appendChild(loading_el);
-        } else {
-            loading_el.classList.remove("hidden");
+            pause_game();
         }
-        
-        pause_game();
     }
     
     function create_table()
