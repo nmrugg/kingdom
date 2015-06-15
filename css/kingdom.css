@@ -63,6 +63,9 @@ html, body {
     font-family: Lato;
     font-size: 15px;
 }
+.moveb.moveSAN {
+    text-shadow: 0 0 1px rgba(0,0,0,0.4);
+}
 .movew {
     color: #030303;
 }
