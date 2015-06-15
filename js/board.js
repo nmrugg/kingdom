@@ -633,40 +633,49 @@ var BOARD = function board_init(el, options)
         return icon;
     }
     
-    function promotion_prompt(piece, cb)
+    function create_modular_window()
     {
-        var mod_win = document.createElement("div"),
-            text_el = document.createElement("div"),
-            old_mode = board.get_mode();
-        
-        mod_win.classList.add("board_modular_window");
+        var mod_win = G.cde("div", {c: "board_modular_window"}),
+            old_mode;
         
         function close_window()
         {
             document.body.removeChild(mod_win);
-            delete board.modular_window_close;
+            board.set_mode(old_mode);
         }
+        
+        function show_window()
+        {
+            old_mode = board.get_mode();
+            document.body.appendChild(mod_win);
+            board.set_mode("waiting_for_modular_window");
+        }
+        
+        return {
+            close: close_window,
+            show: show_window,
+            el: mod_win,
+        }
+    }
+    
+    function promotion_prompt(piece, cb)
+    {
+        var modular_window = create_modular_window();
         
         function onselect(which)
         {
-            board.set_mode(old_mode)
-            close_window();
+            modular_window.close();
             cb(which);
         }
         
-        text_el.textContent = "Promote to";
-        text_el.classList.add("promotion_text");
+        modular_window.el.appendChild(G.cde("div", {t:"Promote to", c: "promotion_text"}));
         
-        mod_win.appendChild(text_el);
+        modular_window.el.appendChild(create_promotion_icon("q", piece, onselect));
+        modular_window.el.appendChild(create_promotion_icon("r", piece, onselect));
+        modular_window.el.appendChild(create_promotion_icon("b", piece, onselect));
+        modular_window.el.appendChild(create_promotion_icon("n", piece, onselect));
         
-        mod_win.appendChild(create_promotion_icon("q", piece, onselect));
-        mod_win.appendChild(create_promotion_icon("r", piece, onselect));
-        mod_win.appendChild(create_promotion_icon("b", piece, onselect));
-        mod_win.appendChild(create_promotion_icon("n", piece, onselect));
-        
-        document.body.appendChild(mod_win);
-        board.set_mode("waiting_for_modular_window")
-        board.modular_window_close = close_window;
+        modular_window.show();
     }
     
     function report_move(uci, promoting, piece, cb)
