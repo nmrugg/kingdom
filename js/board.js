@@ -353,14 +353,13 @@ var BOARD = function board_init(el, options)
     
     function switch_turn()
     {
+        var last_turn = board.turn;
         if (board.turn === "w") {
             board.turn = "b";
         } else {
             board.turn = "w";
         }
-        if (board.onswitch) {
-            board.onswitch();
-        }
+        G.events.trigger("board_turn_switch", {turn: board.turn, last_turn: last_turn});
     }
     
     function create_board(el, dim)

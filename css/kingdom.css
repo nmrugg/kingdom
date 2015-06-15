@@ -37,7 +37,7 @@ html, body {
     position: absolute;
     width: 100%;
     font-family: "Lato light", arial, sans;
-    font-size: 17px;
+    font-size: 14px;
 }
 .moveRow {
     display: table-row;
@@ -55,23 +55,32 @@ html, body {
     text-align: center;
     border-right: 1px solid #aaa;
     padding: 4px 0;
-    font-size: 14px;
+    font-size: 13px;
     vertical-align: middle;
 }
 .moveSAN {
     font-weight: bold;
+    font-family: Lato;
+    font-size: 15px;
+}
+.moveb.moveSAN {
+    text-shadow: 0 0 1px rgba(0,0,0,0.4);
+}
+.movew {
+    color: #030303;
 }
 .moveb {
-    background-color: rgb(220, 220, 220);
+    color: rgb(252, 252, 252);
+    background-color: rgb(150, 150, 150);
 }
 .moveRowEven.moveb {
-    background-color: rgb(210, 210, 210);
+    background-color: rgb(180, 180, 180);
 }
 .movew, .moveNumCell {
-    background-color: rgb(250, 250, 255);
+    background-color: rgb(235, 235, 245);
 }
 .moveRowOdd.movew, .moveNumCell.moveRowOdd {
-    background-color: rgb(241, 241, 254);
+    background-color: rgb(250, 250, 255);
 }
 
 .plyNotation {
@@ -106,51 +115,9 @@ html, body {
 .table_cell_1_2 {
     padding-left: 7px;
 }
-/*
-.player_left {
-    padding: 0 5px;
-}
 
-.player_right {
-    padding: 0 7px;
-}
-*/
-
-/*
-.player {
-    position: absolute;
-    width: 20%;
-    top: 0;
-}
-
-.left_player {
-    left: 0;
-}
-
-.right_player {
-    right: 0;
-}
-
-.player {
-    position: absolute;
-    width: 20%;
-    top: 0;
-}
-
-.player_white {
-    left: 0;
-}
-
-.player_black {
-    right: 0;
-}
-*/
 
 .clock {
-    /*
-    position: absolute;
-    bottom: 0;
-    */
     text-align: center;
     font-family: impact, monospace, sans;
     font-size: 35px;
@@ -158,13 +125,11 @@ html, body {
 }
 
 .clock_white {
-    /*left: 0;*/
     background-color: white;
     color: black;
 }
 
 .clock_black {
-    /*right: 0;*/
     background-color: black;
     color: white;
 }
