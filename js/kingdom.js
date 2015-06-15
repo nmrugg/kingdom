@@ -1763,7 +1763,8 @@
                     len = 3;
                 
                 for (i = 0; i < len; i += 1) {
-                    placeholders[i] = G.cde("div", {c: "moveCell move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 ? "\u2026" : "\u00a0"}); /// \u2026 is elipse; \u00a0 is non-breaking space.
+                    ///NOTE: We make it moveSAN to make the ellipse bold.
+                    placeholders[i] = G.cde("div", {c: "moveCell moveSAN move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 ? "\u2026" : "\u00a0"}); /// \u2026 is ellipse; \u00a0 is non-breaking space.
                     rows[cur_row].row_el.appendChild(placeholders[i]);
                 }
                 
