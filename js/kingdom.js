@@ -1764,7 +1764,8 @@
                 
                 for (i = 0; i < len; i += 1) {
                     ///NOTE: We make it moveSAN to make the ellipse bold.
-                    placeholders[i] = G.cde("div", {c: "moveCell moveSAN move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 && san.slice(-1) !== "#" ? "\u2026" : "\u00a0"}); /// \u2026 is ellipse; \u00a0 is non-breaking space.
+                    ///NOTE: Don't add ellipse on checkmate (unless we're adding the placeholder earlier (i.e., we're black)).
+                    placeholders[i] = G.cde("div", {c: "moveCell moveSAN move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 && color === "b" || san.slice(-1) !== "#" ? "\u2026" : "\u00a0"}); /// \u2026 is ellipse; \u00a0 is non-breaking space.
                     rows[cur_row].row_el.appendChild(placeholders[i]);
                 }
                 
