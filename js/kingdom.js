@@ -1469,6 +1469,7 @@
         function reset_clock(color)
         {
             var player = board.players[color];
+            delete player.last_move_time;
             if (player.has_time) {
                 player.time = player.start_time;
                 player.move_start_time = player.start_time;
