@@ -642,10 +642,15 @@ var BOARD = function board_init(el, options)
         {
             document.body.removeChild(mod_win);
             board.set_mode(old_mode);
+            delete board.close_modular_window;
         }
         
-        function show_window()
+        function open_window()
         {
+            if (board.close_modular_window) {
+                return setTimeout(open_window, 200);
+            }
+            board.close_modular_window = close_window;
             old_mode = board.get_mode();
             document.body.appendChild(mod_win);
             board.set_mode("waiting_for_modular_window");
@@ -653,7 +658,7 @@ var BOARD = function board_init(el, options)
         
         return {
             close: close_window,
-            show: show_window,
+            open: open_window,
             el: mod_win,
         }
     }
@@ -675,7 +680,7 @@ var BOARD = function board_init(el, options)
         modular_window.el.appendChild(create_promotion_icon("b", piece, onselect));
         modular_window.el.appendChild(create_promotion_icon("n", piece, onselect));
         
-        modular_window.show();
+        modular_window.open();
     }
     
     function report_move(uci, promoting, piece, cb)
@@ -943,6 +948,10 @@ var BOARD = function board_init(el, options)
         board.turn = "w";
         board.moves = [];
         board.messy = false;
+        
+        if (typeof board.close_modular_window === "function") {
+            board.close_modular_window();
+        }
     }
     
     function wait()
@@ -1591,6 +1600,7 @@ var BOARD = function board_init(el, options)
         get_mode: get_mode,
         set_mode: set_mode,
         get_san: get_san,
+        create_modular_window: create_modular_window,
     /// onmove()
     /// onswitch()
     /// turn
