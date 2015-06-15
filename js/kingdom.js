@@ -394,6 +394,8 @@
     {
         get_legal_moves(cur_pos_cmd, function onget(moves)
         {
+            var message_el;
+            
             zobrist_keys.push(moves.key);
             
             stalemate_by_rules = is_stalemate_by_rule(moves.fen);
@@ -410,19 +412,30 @@
                 if (board.get_mode() === "play") {
                     /// Was it checkmate?
                     if (moves.checkers.length && !stalemate_by_rules) {
-                        alert((board.turn === "b" ? "White" : "Black") + " wins!\n" + (board.turn === "b" ? "Black" : "White") + " is checkmated!");
+                        message_el = G.cde("div", [
+                            (board.turn === "b" ? "White" : "Black") + " wins!",
+                            G.cde("br"),
+                            (board.turn === "b" ? "Black" : "White") + " is checkmated!",
+                        ]);
                     } else {
                         if (stalemate_by_rules) {
                             if (stalemate_by_rules === "50") {
-                                alert("Stalemate: 50 move rule");
+                                message_el = G.cde("div", {t: "Stalemate: 50 move rule"});
                             } else if (stalemate_by_rules === "3") {
-                                alert("Stalemate: Three-fold repetition");
+                                message_el = G.cde("div", {t: "Stalemate: Three-fold repetition"});
                             } else if (stalemate_by_rules === "material") {
-                                alert("Stalemate: Insufficient material");
+                                message_el = G.cde("div", {t: "Stalemate: Insufficient material"});
                             }
                         } else {
-                            alert("Stalemate!");
+                            message_el = G.cde("div", {t: "Stalemate!"});
                         }
+                    }
+                    if (message_el) {
+                        board.create_modular_window({
+                            content: message_el,
+                            cancelable: true,
+                            open: true,
+                        });
                     }
                     pause_game();
                 }
@@ -1332,7 +1345,8 @@
             var now = Date.now(),
                 diff,
                 player = board.players[color || board.turn],
-                legal_moves;
+                legal_moves,
+                message;
             
             diff = now - last_time;
             last_time = now;
@@ -1352,10 +1366,15 @@
                         
                         /// If the player with time is almost beaten (or the game is almost a stalemate) call it a stalemate.
                         if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
-                            alert("Stalemate: Player with time has insufficient material");
+                            message = "Stalemate: Player with time has insufficient material";
                         } else {
-                            alert((player.color === "w" ? "White" : "Black") + " loses on time.");
+                            message = (player.color === "w" ? "White" : "Black") + " loses on time.";
                         }
+                        board.create_modular_window({
+                            content: G.cde("div", {t: message}),
+                            cancelable: true,
+                            open: true,
+                        });
                     }
                 }
             }
