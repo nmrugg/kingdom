@@ -1763,7 +1763,7 @@
                     len = 3;
                 
                 for (i = 0; i < len; i += 1) {
-                    placeholders[i] = G.cde("div", {c: "moveCell", t: "\u00a0"});
+                    placeholders[i] = G.cde("div", {c: "moveCell move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 ? "\u2026" : "\u00a0"}); /// \u2026 is elipse; \u00a0 is non-breaking space.
                     rows[cur_row].row_el.appendChild(placeholders[i]);
                 }
                 
@@ -1798,7 +1798,7 @@
             rows[cur_row].row_el.appendChild(move_data.eval_el);
             rows[cur_row].row_el.appendChild(move_data.time_el);
             
-            if (need_to_add_placeholders) {
+            if (color === "w") {
                 add_placeholding_els();
             }
             
