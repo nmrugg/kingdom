@@ -89,12 +89,6 @@ html, body {
 }
 
 .loading {
-    position: absolute;
-    top: 25%;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    text-align: center;
     font-size: 40px;
     font-family: arial, sans, sans-serif;
     opacity: .8;

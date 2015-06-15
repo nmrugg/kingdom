@@ -633,40 +633,91 @@ var BOARD = function board_init(el, options)
         return icon;
     }
     
-    function promotion_prompt(piece, cb)
+    function create_modular_window(options)
     {
-        var mod_win = document.createElement("div"),
-            text_el = document.createElement("div"),
-            old_mode = board.get_mode();
-        
-        mod_win.classList.add("board_modular_window");
+        var mod_win = G.cde("div", {c: "board_modular_window"}),
+            old_mode;
         
         function close_window()
         {
             document.body.removeChild(mod_win);
-            delete board.modular_window_close;
+            if (!options.change_mode) {
+                board.set_mode(old_mode);
+            }
+            delete board.close_modular_window;
+            window.removeEventListener("keydown", listen_for_close);
         }
+        
+        function open_window()
+        {
+            if (board.close_modular_window) {
+                return setTimeout(open_window, 200);
+            }
+            board.close_modular_window = close_window;
+            
+            document.body.appendChild(mod_win);
+            if (!options.change_mode) {
+                old_mode = board.get_mode();
+                board.set_mode("waiting_for_modular_window");
+            }
+        }
+        
+        function listen_for_close(e)
+        {
+            if (e.keyCode === 27) { /// escape
+                close_window();
+            }
+        }
+        
+        function add_x()
+        {
+            mod_win.appendChild(G.cde("div", {t: "X", c: "xButton"}, {click: close_window}));
+        }
+        
+        if (options) {
+            if (options.content) {
+                if (typeof options.content === "object") {
+                    mod_win.appendChild(options.content);
+                } else {
+                    mod_win.innerHTML = options.content;
+                }
+            }
+            if (options.cancelable) {
+                window.addEventListener("keydown", listen_for_close);
+                add_x();
+            }
+            if (options.open) {
+                open_window();
+            }
+        } else {
+            options = {};
+        }
+        
+        return {
+            close: close_window,
+            open: open_window,
+            el: mod_win,
+        }
+    }
+    
+    function promotion_prompt(piece, cb)
+    {
+        var modular_window = create_modular_window();
         
         function onselect(which)
         {
-            board.set_mode(old_mode)
-            close_window();
+            modular_window.close();
             cb(which);
         }
         
-        text_el.textContent = "Promote to";
-        text_el.classList.add("promotion_text");
+        modular_window.el.appendChild(G.cde("div", {t:"Promote to", c: "promotion_text"}));
         
-        mod_win.appendChild(text_el);
+        modular_window.el.appendChild(create_promotion_icon("q", piece, onselect));
+        modular_window.el.appendChild(create_promotion_icon("r", piece, onselect));
+        modular_window.el.appendChild(create_promotion_icon("b", piece, onselect));
+        modular_window.el.appendChild(create_promotion_icon("n", piece, onselect));
         
-        mod_win.appendChild(create_promotion_icon("q", piece, onselect));
-        mod_win.appendChild(create_promotion_icon("r", piece, onselect));
-        mod_win.appendChild(create_promotion_icon("b", piece, onselect));
-        mod_win.appendChild(create_promotion_icon("n", piece, onselect));
-        
-        document.body.appendChild(mod_win);
-        board.set_mode("waiting_for_modular_window")
-        board.modular_window_close = close_window;
+        modular_window.open();
     }
     
     function report_move(uci, promoting, piece, cb)
@@ -934,6 +985,10 @@ var BOARD = function board_init(el, options)
         board.turn = "w";
         board.moves = [];
         board.messy = false;
+        
+        if (typeof board.close_modular_window === "function") {
+            board.close_modular_window();
+        }
     }
     
     function wait()
@@ -1582,6 +1637,7 @@ var BOARD = function board_init(el, options)
         get_mode: get_mode,
         set_mode: set_mode,
         get_san: get_san,
+        create_modular_window: create_modular_window,
     /// onmove()
     /// onswitch()
     /// turn

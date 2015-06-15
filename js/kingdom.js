@@ -29,6 +29,7 @@
     var moves_manager;
     var layout = {};
     var default_sd_time = "15:00";
+    var showing_loading;
     
     function error(str)
     {
@@ -394,6 +395,8 @@
     {
         get_legal_moves(cur_pos_cmd, function onget(moves)
         {
+            var message_el;
+            
             zobrist_keys.push(moves.key);
             
             stalemate_by_rules = is_stalemate_by_rule(moves.fen);
@@ -410,19 +413,30 @@
                 if (board.get_mode() === "play") {
                     /// Was it checkmate?
                     if (moves.checkers.length && !stalemate_by_rules) {
-                        alert((board.turn === "b" ? "White" : "Black") + " wins!\n" + (board.turn === "b" ? "Black" : "White") + " is checkmated!");
+                        message_el = G.cde("div", [
+                            (board.turn === "b" ? "White" : "Black") + " wins!",
+                            G.cde("br"),
+                            (board.turn === "b" ? "Black" : "White") + " is checkmated!",
+                        ]);
                     } else {
                         if (stalemate_by_rules) {
                             if (stalemate_by_rules === "50") {
-                                alert("Stalemate: 50 move rule");
+                                message_el = G.cde("div", {t: "Stalemate: 50 move rule"});
                             } else if (stalemate_by_rules === "3") {
-                                alert("Stalemate: Three-fold repetition");
+                                message_el = G.cde("div", {t: "Stalemate: Three-fold repetition"});
                             } else if (stalemate_by_rules === "material") {
-                                alert("Stalemate: Insufficient material");
+                                message_el = G.cde("div", {t: "Stalemate: Insufficient material"});
                             }
                         } else {
-                            alert("Stalemate!");
+                            message_el = G.cde("div", {t: "Stalemate!"});
                         }
+                    }
+                    if (message_el) {
+                        board.create_modular_window({
+                            content: message_el,
+                            cancelable: true,
+                            open: true,
+                        });
                     }
                     pause_game();
                 }
@@ -1332,7 +1346,8 @@
             var now = Date.now(),
                 diff,
                 player = board.players[color || board.turn],
-                legal_moves;
+                legal_moves,
+                message;
             
             diff = now - last_time;
             last_time = now;
@@ -1352,10 +1367,15 @@
                         
                         /// If the player with time is almost beaten (or the game is almost a stalemate) call it a stalemate.
                         if (is_insufficient_material(player.color === "w" ? "b" : "w")) {
-                            alert("Stalemate: Player with time has insufficient material");
+                            message = "Stalemate: Player with time has insufficient material";
                         } else {
-                            alert((player.color === "w" ? "White" : "Black") + " loses on time.");
+                            message = (player.color === "w" ? "White" : "Black") + " loses on time.";
                         }
+                        board.create_modular_window({
+                            content: G.cde("div", {t: message}),
+                            cancelable: true,
+                            open: true,
+                        });
                     }
                 }
             }
@@ -1764,7 +1784,8 @@
                 
                 for (i = 0; i < len; i += 1) {
                     ///NOTE: We make it moveSAN to make the ellipse bold.
-                    placeholders[i] = G.cde("div", {c: "moveCell moveSAN move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 ? "\u2026" : "\u00a0"}); /// \u2026 is ellipse; \u00a0 is non-breaking space.
+                    ///NOTE: Don't add ellipse on checkmate (unless we're adding the placeholder earlier (i.e., we're black)).
+                    placeholders[i] = G.cde("div", {c: "moveCell moveSAN move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 && (color === "b" || san.slice(-1) !== "#") ? "\u2026" : "\u00a0"}); /// \u2026 is ellipse; \u00a0 is non-breaking space.
                     rows[cur_row].row_el.appendChild(placeholders[i]);
                 }
                 
@@ -1880,7 +1901,11 @@
     
     function hide_loading(do_not_start)
     {
-        loading_el.classList.add("hidden");
+        if (typeof board.close_modular_window === "function") {
+            board.close_modular_window();
+        }
+        showing_loading = false;
+        
         if (!do_not_start) {
             board.play();
             G.events.trigger("gameUnpaused");
@@ -1889,15 +1914,17 @@
     
     function show_loading()
     {
-        if (!loading_el) {
-            loading_el = G.cde("div", {t: "Loading...", c: "loading"});
+        if (!showing_loading) {
+            showing_loading = true;
+            board.create_modular_window({
+                content: G.cde("div", {t: "Loading...", c: "loading"}),
+                cancelable: false,
+                open: true,
+                change_mode: false,
+            });
             
-            document.documentElement.appendChild(loading_el);
-        } else {
-            loading_el.classList.remove("hidden");
+            pause_game();
         }
-        
-        pause_game();
     }
     
     function create_table()
