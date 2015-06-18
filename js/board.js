@@ -636,15 +636,16 @@ var BOARD = function board_init(el, options)
     function create_modular_window(options)
     {
         var mod_win = G.cde("div", {c: "board_modular_window"}),
-            old_mode;
+            old_mode,
+            modular_mode = "waiting_for_modular_window";
         
         function close_window()
         {
+            delete board.close_modular_window;
             document.body.removeChild(mod_win);
-            if (!options.change_mode) {
+            if (!options.dont_change_mode && board.get_mode() === modular_mode) {
                 board.set_mode(old_mode);
             }
-            delete board.close_modular_window;
             window.removeEventListener("keydown", listen_for_close);
         }
         
@@ -656,9 +657,9 @@ var BOARD = function board_init(el, options)
             board.close_modular_window = close_window;
             
             document.body.appendChild(mod_win);
-            if (!options.change_mode) {
+            if (!options.dont_change_mode) {
                 old_mode = board.get_mode();
-                board.set_mode("waiting_for_modular_window");
+                board.set_mode(modular_mode);
             }
         }
         
@@ -1595,6 +1596,9 @@ var BOARD = function board_init(el, options)
     function set_mode(new_mode)
     {
         var old_mode = mode;
+        if ((new_mode === "play" || new_mode === "setup") && typeof board.close_modular_window === "function") {
+            board.close_modular_window();
+        }
         mode = new_mode;
         G.events.trigger("board_mode_change", {old_move: old_mode, mode: new_mode});
     }
