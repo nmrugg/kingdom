@@ -767,10 +767,10 @@
     function init_setup()
     {
         pause_game();
-        board.enable_setup();
         new_game_el.textContent = "Start Game";
         setup_game_el.disabled = true;
         hide_loading(true);
+        board.enable_setup();
         G.events.trigger("initSetup");
     }
     
@@ -1914,13 +1914,16 @@
     
     function show_loading()
     {
+        if (typeof board.close_modular_window === "function") {
+            board.close_modular_window();
+        }
         if (!showing_loading) {
             showing_loading = true;
             board.create_modular_window({
                 content: G.cde("div", {t: "Loading...", c: "loading"}),
                 cancelable: false,
                 open: true,
-                change_mode: false,
+                dont_change_mode: true,
             });
             
             pause_game();
