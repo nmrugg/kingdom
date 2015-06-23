@@ -338,6 +338,9 @@
                         /// We found a mating piece. Stop now.
                     } else if (piece_type === "n") {
                         piece_counts.knights += 1;
+                        if (piece_counts.knights > 1) {
+                            break;
+                        }
                     } else if (piece_type === "b") {
                         piece_counts.bishops += 1;
                         if ((board.pieces[i].rank + board.pieces[i].file) % 2) {
@@ -346,9 +349,7 @@
                     }
                 }
             }
-            if (!piece_counts.others && ((!piece_counts.knights && !piece_counts.bishops) || ((piece_counts.knights === 1 && !piece_counts.bishops) ||(!piece_counts.knights && (piece_counts.light_bishops === 0 || (piece_counts.bishops === piece_counts.light_bishops)))))) {
-                return true;
-            }
+            return !piece_counts.others && ((!piece_counts.knights && !piece_counts.bishops) || ((piece_counts.knights === 1 && !piece_counts.bishops) ||(!piece_counts.knights && (piece_counts.light_bishops === 0 || (piece_counts.bishops === piece_counts.light_bishops)))))
         }
     }
     
@@ -357,7 +358,7 @@
         var i,
             count = 1;
         
-        /// Check 50 move rull
+        /// Check 50 move rule
         if (fen.half_move_clock > 99) {
             return "50";
         }
@@ -1392,7 +1393,7 @@
             /// Don't start the timer if the game has not yet begun.
             if (board.messy && !timer_on) {
                 last_time = Date.now();
-                tick_timer = setInterval(tick, 34);
+                tick_timer = setInterval(tick, speed);
                 timer_on = true;
             }
         }
