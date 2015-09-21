@@ -842,10 +842,11 @@ var BOARD = function board_init(el, options)
             }
             
             /// Is it castling?
-            if (san === "O-O") { /// Kingside castle
+            ///NOTE: We must check substring because there could be a + or # after O-O or O-O-O.
+            if (san.substr(0, 3) === "O-O") { /// Kingside castle
                 rook = get_piece_from_rank_file(rook_rank, board_details.files - 1);
                 set_piece_pos(rook, {rank: rook_rank, file: board_details.files - 3});
-            } else if (san === "O-O-O") { /// Queenside castle
+            } else if (san.substr(0, 5) === "O-O-O") { /// Queenside castle
                 rook = get_piece_from_rank_file(rook_rank, 0);
                 set_piece_pos(rook, {rank: rook_rank, file: 3});
             }
