@@ -6,7 +6,7 @@ var http = require("http"),
     url  = require("url"),
     path = require("path"),
     fs   = require("fs"),
-    port = process.argv[2] || 8080; /// Defaults to port 8080
+    port = process.argv[2] || 9864; /// Defaults to port 9864
 
 function get_mime(filename)
 {
