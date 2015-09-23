@@ -843,12 +843,13 @@ var BOARD = function board_init(el, options)
             
             /// Is it castling?
             ///NOTE: We must check substring because there could be a + or # after O-O or O-O-O.
-            if (san.substr(0, 3) === "O-O") { /// Kingside castle
-                rook = get_piece_from_rank_file(rook_rank, board_details.files - 1);
-                set_piece_pos(rook, {rank: rook_rank, file: board_details.files - 3});
-            } else if (san.substr(0, 5) === "O-O-O") { /// Queenside castle
+            ///NOTE: We must check for queenside castling first because "O-O" will also match "O-O-O".
+            if (san.substr(0, 5) === "O-O-O") { /// Queenside castle
                 rook = get_piece_from_rank_file(rook_rank, 0);
                 set_piece_pos(rook, {rank: rook_rank, file: 3});
+            } else if (san.substr(0, 3) === "O-O") { /// Kingside castle
+                rook = get_piece_from_rank_file(rook_rank, board_details.files - 1);
+                set_piece_pos(rook, {rank: rook_rank, file: board_details.files - 3});
             }
         } else if (board.get_mode() === "setup" && captured_piece) {
             /// The pieces should swap places.
