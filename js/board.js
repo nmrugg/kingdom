@@ -935,7 +935,12 @@ var BOARD = function board_init(el, options)
                 prefix_css(board.dragging.piece.el, "transform", "none");
                 board.dragging.piece.el.classList.remove("dragging");
             }
-            board.el.classList.remove("dragging");
+            
+            /// Let the piece snap into place and then remove the dragging style.
+            setTimeout(function ()
+            {
+                board.el.classList.remove("dragging");
+            }, 0);
             
             delete board.dragging;
         }
