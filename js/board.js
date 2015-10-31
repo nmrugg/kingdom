@@ -939,7 +939,7 @@ var BOARD = function board_init(el, options)
                 setTimeout(function ()
                 {
                     piece.el.classList.remove("dragging");
-                }, 0);
+                }, 11);
             }
             
             board.el.classList.remove("dragging");
