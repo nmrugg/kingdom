@@ -910,7 +910,8 @@ var BOARD = function board_init(el, options)
     {
         var square,
             uci,
-            promoting;
+            promoting,
+            piece;
         
         if (board.dragging && board.dragging.piece) {
             square = get_dragging_hovering_square(e);
@@ -933,14 +934,15 @@ var BOARD = function board_init(el, options)
             /// If it wasn't deleted
             if (board.dragging.piece) {
                 prefix_css(board.dragging.piece.el, "transform", "none");
-                board.dragging.piece.el.classList.remove("dragging");
+                piece = board.dragging.piece;
+                /// Let the piece snap into place and then remove the dragging style.
+                setTimeout(function ()
+                {
+                    piece.el.classList.remove("dragging");
+                }, 0);
             }
             
-            /// Let the piece snap into place and then remove the dragging style.
-            setTimeout(function ()
-            {
-                board.el.classList.remove("dragging");
-            }, 0);
+            board.el.classList.remove("dragging");
             
             delete board.dragging;
         }
