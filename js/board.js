@@ -253,7 +253,7 @@ var BOARD = function board_init(el, options)
         
         if (color && colors.indexOf(color) > -1) {
             hover_squares[y][x].dot_color = color;
-            hover_squares[y][x].classList.add("dot_square_" + color);
+            //hover_squares[y][x].classList.add("dot_square_" + color);
             hover_squares[y][x].classList.add("dotSquare");
         }
     }
@@ -319,9 +319,10 @@ var BOARD = function board_init(el, options)
                     if (!lines[dir]) {
                         lines[dir] = [];
                     }
-                    //add_dot(move_data.file, move_data.rank, color);
+                    add_dot(move_data.file, move_data.rank, "green");
                     //points.push({rank: move_data.rank, file: move_data.file, color: color});
                     lines[dir].push({rank: move_data.rank, file: move_data.file, capture: capture});
+                    /// This doesn't seem to do anything.
                     add_clickabe_square(move_data);
                 }
             });
@@ -364,7 +365,7 @@ var BOARD = function board_init(el, options)
                     //console.log(line);
                     //lightning_lines
                     //box2 = squares[rank2][file2].getBoundingClientRect(),
-                    console.log(lightning_points)
+                    //console.log(lightning_points)
                     lightning_lines.push(LIGHTNING.drawLine(lightning_points));
                 }
             });
