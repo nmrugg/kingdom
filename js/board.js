@@ -21,7 +21,8 @@ var BOARD = function board_init(el, options)
         arrow_manager,
         dragging_arrow = {},
         mode = "setup",
-        last_fen;
+        last_fen,
+        lightning_lines = [];
     
     function num_to_alpha(num)
     {
@@ -235,6 +236,17 @@ var BOARD = function board_init(el, options)
         });
     }
     
+    function clear_lightning()
+    {
+        lightning_lines.forEach(function oneach(line)
+        {
+            //try {
+                line.kill();
+            //} catch (e) {}
+        });
+        lightning_lines = [];
+    }
+    
     function add_dot(x, y, color)
     {
         remove_dot(x, y);
@@ -261,6 +273,105 @@ var BOARD = function board_init(el, options)
         return get_file_letter(piece.file) + (piece.rank + 1);
     }
     
+    function point_from_square(rank, file)
+    {
+        var box = squares[rank][file].getBoundingClientRect();
+        return {x: box.left + box.width / 2, y: box.top + box.height / 2};
+    }
+    
+    function show_legal_moves(piece)
+    {
+        var start_sq = get_piece_start_square(piece);
+        var start_info = get_rank_file_from_str(start_sq);
+        var lines = {};
+        var knight_movements = 0;
+        
+        if (legal_moves && legal_moves.uci) {
+            legal_moves.uci.forEach(function oneach(move, i)
+            {
+                var move_data,
+                    capture,
+                    dir = "";
+                
+                if (move.indexOf(start_sq) === 0) {
+                    
+                    move_data = get_rank_file_from_str(move.substr(2));
+                    ///NOTE: We can't use get_piece_from_rank_file(move_data.rank, move_data.file) because it won't find en passant.
+                    capture = (legal_moves.san[i].indexOf("x") > -1)
+                    
+                    /// knights are special
+                    if (piece.type === "n") {
+                        dir = "n" + knight_movements;
+                        knight_movements += 1;
+                    } else {
+                        if (move_data.rank > start_info.rank) {
+                            dir += "u";
+                        } else if (move_data.rank < start_info.rank) {
+                            dir += "d";
+                        }
+                        if (move_data.file > start_info.file) {
+                            dir += "r";
+                        } else if (move_data.file < start_info.file) {
+                            dir += "l";
+                        }
+                    }
+                    
+                    if (!lines[dir]) {
+                        lines[dir] = [];
+                    }
+                    //add_dot(move_data.file, move_data.rank, color);
+                    //points.push({rank: move_data.rank, file: move_data.file, color: color});
+                    lines[dir].push({rank: move_data.rank, file: move_data.file, capture: capture});
+                    add_clickabe_square(move_data);
+                }
+            });
+            
+            Object.keys(lines).forEach(function oneach(dir)
+            {
+                var line = lines[dir];
+                var lightning_points;
+                ///NOTE: The moves are not in any particular order.
+                var cur_rank;
+                var cur_file;
+                if (line.length) {
+                    cur_rank = start_info.rank;
+                    cur_file = start_info.file;
+                    lightning_points = {points: [point_from_square(cur_rank, cur_file)], radius: squares[cur_rank][cur_file].getBoundingClientRect().width / 3};
+                    line.forEach(function oneach(point, i)
+                    {
+                        /// Is it knight movment?
+                        if (dir[0] === "n") {
+                            cur_rank = point.rank;
+                            cur_file = point.file;
+                        } else {
+                            if (dir.indexOf("d") !== -1) {
+                                cur_rank -= 1;
+                            } else if (dir.indexOf("u") !== -1) {
+                                cur_rank += 1;
+                            }
+                            if (dir.indexOf("l") !== -1) {
+                                cur_file -= 1;
+                            } else if (dir.indexOf("r") !== -1) {
+                                cur_file += 1;
+                            }
+                        }
+                        
+                        lightning_points.points[i + 1] = point_from_square(cur_rank, cur_file);
+                        if (point.capture) {
+                            lightning_points.points[i + 1].hue = 0;
+                        }
+                    });
+                    //console.log(line);
+                    //lightning_lines
+                    //box2 = squares[rank2][file2].getBoundingClientRect(),
+                    console.log(lightning_points)
+                    lightning_lines.push(LIGHTNING.drawLine(lightning_points));
+                }
+            });
+        }
+    }
+    /// Old dots
+    /*
     function show_legal_moves(piece)
     {
         var start_sq = get_piece_start_square(piece);
@@ -285,6 +396,7 @@ var BOARD = function board_init(el, options)
             });
         }
     }
+    */
     
     function make_square(x, y)
     {
@@ -525,6 +637,7 @@ var BOARD = function board_init(el, options)
                 if (board.clicked_piece && board.clicked_piece.piece) {
                     remove_square_focus(board.clicked_piece.piece.file, board.clicked_piece.piece.rank);
                     clear_dots();
+                    clear_lightning();
                     /// If the king was previously selected, we want to refocus it.
                     if (board.checked_king) {
                         focus_square(board.checked_king.file, board.checked_king.rank, "red");
@@ -958,6 +1071,7 @@ var BOARD = function board_init(el, options)
         clear_highlights();
         clear_focuses();
         clear_dots();
+        clear_lightning();
         arrow_manager.clear();
     }
     
@@ -1444,6 +1558,21 @@ var BOARD = function board_init(el, options)
         
         function draw_arrow(rank1, file1, rank2, file2, color, auto, do_not_add)
         {
+            var data = {points:[point_from_square(rank1, file1),point_from_square(rank2, file2)], radius: squares[0][0].getBoundingClientRect().width / 3};
+            if (color === "rgba(240, 0, 0, .6)") {
+                data.hue = 0;
+            }
+            var lightning = LIGHTNING.drawLine(data);
+            var arrow = {
+                auto: auto,
+                lightning: lightning,
+            };
+            arrows.push(arrow);
+            return arrows.length - 1;
+        }
+        /*
+        function draw_arrow(rank1, file1, rank2, file2, color, auto, do_not_add)
+        {
             var box1 = squares[rank1][file1].getBoundingClientRect(),
                 box2 = squares[rank2][file2].getBoundingClientRect(),
                 proportion,
@@ -1480,6 +1609,7 @@ var BOARD = function board_init(el, options)
             
             return arrows.length - 1;
         }
+        */
         
         function remove_if_empty()
         {
@@ -1502,22 +1632,22 @@ var BOARD = function board_init(el, options)
             var i;
             
             /// Sometimes, we don't want to remove the arrows for last move and checkers.
-            if (keep_auto_arrows) {
-                for (i = arrows.length - 1; i >= 0; i -= 1) {
-                    if (!arrows[i].auto) {
-                        G.array_remove(arrows, i);
-                    }
+            for (i = arrows.length - 1; i >= 0; i -= 1) {
+                if (!keep_auto_arrows || !arrows[i].auto) {
+                    //try {
+                        arrows[i].lightning.kill();
+                    //} catch (e) {}
+                    G.array_remove(arrows, i);
                 }
-            } else {
-                arrows = [];
             }
-            set_size();
             
+            /*
             if (arrows.length) {
                 draw_all_arrows();
             } else {
                 remove_if_empty();
             }
+            */
         }
         
         function draw_all_arrows()
@@ -1564,11 +1694,15 @@ var BOARD = function board_init(el, options)
             }
             
             if (arrows[which]) {
+                
+                //try {
+                    arrows[which].kill();
+                //} catch (e) {};
                 G.array_remove(arrows, which);
-                redraw();
+                //redraw();
             }
             
-            remove_if_empty();
+            //remove_if_empty();
         }
         
         function arrow_onmove(e)
