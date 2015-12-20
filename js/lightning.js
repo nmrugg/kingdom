@@ -344,7 +344,7 @@
             Color.h = lineHue;
             
             // Sorted by the distance from the origin
-            //controls.sort(sortPoints);
+            controls.sort(sortPoints);
             
             baseLine.update(controls);
             
@@ -380,7 +380,8 @@
         
         // Array sort callback
         function sortPoints(p1, p2) {
-            return p1.length() - p2.length();
+            //return p1.length() - p2.length();
+            return p1.distance(options.points[0]) - p2.distance(options.points[0]);
         }
         
         
