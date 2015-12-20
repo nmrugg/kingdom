@@ -340,8 +340,8 @@ var BOARD = function board_init(el, options)
                     lightning_points = {points: [point_from_square(cur_rank, cur_file)], radius: squares[cur_rank][cur_file].getBoundingClientRect().width / 3};
                     line.forEach(function oneach(point, i)
                     {
-                        /// Is it knight movment?
-                        if (dir[0] === "n") {
+                        /// Is it knight movment or only one point (pins can limit movment too)?
+                        if (dir[0] === "n" || line.length === 1) {
                             cur_rank = point.rank;
                             cur_file = point.file;
                         } else {
