@@ -20,6 +20,25 @@
     var S = 100;
     var L_MAX = 85;
     var L_MIN = 45;
+    var default_alpha = 0.3;
+    
+    var mouse = new LIGHTNING.lib.Point();
+    
+    document.addEventListener('mousemove', mouseMove, false);
+    
+    function mouseMove(e) {
+        mouse.set(e.clientX, e.clientY);
+        /*
+        var hit = false;
+        for (var i = 0, len = dragPoints.length; i < len; i++) {
+            if (dragPoints[i].hitTest(mouse)) {
+                hit = true;
+                break;
+            }
+        }
+        document.body.style.cursor = hit ? 'pointer' : 'default';
+        */
+    }
     
     if (!global.LIGHTNING) {
         global.LIGHTNING = {};
@@ -62,7 +81,7 @@
         var canvas;
         var context;
         var lightPoints = [];
-        //var mouse = new LIGHTNING.lib.Point();
+        
         var baseLine;
         var lightningLine;
         var NoiseLine;
@@ -163,7 +182,9 @@
             for (i = 0; i < options.points.length; i++) {
                 //lightPoints.push(new LightPoint(canvas.width * random(), canvas.height * random()));
                 lightPoints[i] = new LightPoint(canvas.width / 2, canvas.height, options.points[i].radius || radius);
-                lightPoints[i].alpha = 0.75;
+                //lightPoints[i].alpha = 0.75;
+                lightPoints[i].alpha = default_alpha;
+                lightPoints[i].orig_radius = lightPoints[i].radius;
                 //lightPoints[i].y -= lightPoints[i].radius;
                 lightPoints[i].x = options.points[i].x - box.left;
                 lightPoints[i].y = options.points[i].y - box.top;
@@ -291,8 +312,19 @@
                 p = lightPoints[i];
                 p.update();
                 //p.update(20, 40);
-                //p.alpha = p.hitTest(mouse) ? 0.75 : 0.2;
-                p.alpha = 0.75;
+                //p.alpha = p.hitTest(mouse) ? 0.9 : 0.2;
+                /// Is the mouse over a point?
+                if (p.hitTest(mouse)) {
+                    p.alpha = 0.9;
+                    p.radius = p.orig_radius * 1.5;
+                } else {
+                    p.alpha = default_alpha;
+                    p.radius = p.orig_radius;
+                }
+                
+                //console.log(p.hitTest(mouse))
+                //console.log(p.alpha)
+                //p.alpha = 0.75;
                 /// Change color of a point here. (And below)
                 ///**
                 Color.h = p.hue;
@@ -425,7 +457,7 @@
                     speed: 0.002,
                     offset: 0
                 }, noiseOptions);
-        
+                
                 this.points = [];
                 this.lineLength = 0;
                 this.children = [];
@@ -730,16 +762,18 @@
             
             this._v = new LIGHTNING.lib.Point(randomRange(-3, 3), randomRange(-3, 3));
             
-            //this._mouse = null;
-            //this._latestMouse = new LIGHTNING.lib.Point();
-            //this._mouseDist = null;
+            this._mouse = null;
+            this._latestMouse = new LIGHTNING.lib.Point();
+            this._mouseDist = null;
             
             this._currentAlpha = 0;
             this._currentRadius = 0;
         }
         
         LightPoint.prototype = LIGHTNING.lib.extend({}, LIGHTNING.lib.Point.prototype, {
-            
+            hitTest: function(mouse) {
+                return this.distance({x: mouse.x - box.left, y: mouse.y - box.top}) < this.radius;
+            },
             kill: function() {
                 this.dying = true;
                 this.radius = 0;
