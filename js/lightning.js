@@ -72,6 +72,12 @@
         document.body.appendChild(dot);
     }
     
+    function calc_distance(p1, p2) {
+        var a = p1.x - p2.x;
+        var b = p1.y - p2.y;
+        return Math.sqrt(a * a + b * b);
+    };
+    
     function drawLine(options)
     {
         var radius = options.radius,
@@ -90,6 +96,13 @@
         var box = {};
         var lineHue = H;
         var reached_end;
+        
+        // Array sort callback
+        function sortPoints(p1, p2) {
+            return calc_distance(options.points[0], p1) - calc_distance(options.points[0], p2);
+        }
+        
+        options.points.sort(sortPoints);
         
         if (typeof options.hue !== "undefined") {
             lineHue = options.hue;
@@ -344,7 +357,7 @@
             Color.h = lineHue;
             
             // Sorted by the distance from the origin
-            controls.sort(sortPoints);
+            //controls.sort(sortPoints);
             
             baseLine.update(controls);
             
@@ -376,12 +389,6 @@
             
             // * debug
             //Debug.exec();
-        }
-        
-        // Array sort callback
-        function sortPoints(p1, p2) {
-            //return p1.length() - p2.length();
-            return p1.distance(options.points[0]) - p2.distance(options.points[0]);
         }
         
         
