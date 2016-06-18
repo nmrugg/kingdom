@@ -23,7 +23,7 @@
     var legal_move_engine;
     var cur_pos_cmd;
     var game_history;
-    var eval_depth = 8;
+    var eval_depth = 12;
     var rating_font_style = "Impact,monospace,mono,sans-serif";
     var font_fit = FONT_FIT({fontFamily: rating_font_style});
     var moves_manager;
