@@ -632,7 +632,7 @@
     {
         ///NOTE: Without time, it thinks really fast. So, we give it a something to make it move reasonably quickly.
         ///      This time is also tweaked based on the level.
-        var default_time = 1200 * 60, /// A bit more than 1 minute
+        var default_time = 1200 * 60, /// 1 minute
             wtime,
             btime,
             depth,
@@ -1689,7 +1689,7 @@
                 }
             }
             
-            moves_manager.update_eval(e.ply, e.score, e.type, e.turn);
+            moves_manager.update_eval(e);
         });
         
         return obj;
@@ -1699,205 +1699,6 @@
     {
         /// \u2011 is a non-breaking hyphen (useful for O-O-O).
         return san.replace(/-/g, "\u2011");
-    }
-    
-    function make_moves_el()
-    {
-        var moves_el = G.cde("div", {c: "movesTable"}),
-            container_el = G.cde("div", {c: "movesTableContainer"}),
-            rows,
-            plys,
-            cur_row,
-            offset_height;
-        
-        function format_move_time(time)
-        {
-            var res,
-                sec,
-                min,
-                hour,
-                day;
-            
-            time = parseFloat(time);
-            
-            if (time < 0) {
-                time = 0;
-            }
-            
-            if (time < 100) { /// Less than 1 sec
-                res = time + "ms";
-            } else if (time < 1000) { /// Less than 1 sec
-                res = ((Math.round(time / 100)) / 10) + "s";
-            } else if (time < 60000) { /// Less than 1 minute
-                res = Math.round(time / 1000) + "s";
-            } else if (time < 3600000) { /// Less than 1 hour
-                /// Always floor since we don't want to round to 60.
-                sec = Math.floor((time % 60000) / 1000);
-                min = Math.floor(time / 60000);
-                res = min + "m" + sec + "s";
-            } else if (time < 86400000) { /// Less than 1 day
-                /// Always floor since we don't want to round to 60.
-                sec  = Math.floor((time % 60000) / 1000);
-                hour = Math.floor(time / 60000);
-                min  = Math.floor(hour % 60);
-                hour = (hour - min) / 60;
-                
-                res = hour + "h" + min + "m" + sec + "s";
-                
-            } else { /// Days
-                ///NOTE: NaN is always falsey, so it will come here. We check this here so that we don't need to waste time checking eariler.
-                if (isNaN(time)) {
-                    return "Error";
-                }
-                /// Always floor since we don't want to round to 60.
-                sec  = Math.floor((time % 60000) / 1000);
-                hour = Math.floor(time / 60000);
-                min  = Math.floor(hour % 60);
-                hour = (hour - min) / 60;
-                day = Math.floor(hour / 24);
-                hour = hour % 24;
-                
-                res = day + "d" + hour + "h" + min + "m" + sec + "s";
-            }
-            
-            return res;
-        }
-        
-        function add_move(color, san, time)
-        {
-            var move_data = {
-                san: san,
-                color: color,
-                time: time,
-                san_el:  G.cde("div", {c: "moveCell moveSAN move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: clean_san(san)}),
-                eval_el: G.cde("div", {c: "moveCell moveEval move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: "\u00a0"}), /// \u00a0 is &nbsp;
-                time_el: G.cde("div", {c: "moveCell moveTime move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: typeof time === "number" ? format_move_time(time) : "\u00a0"}),
-            },
-                need_to_add_placeholders,
-                scroll_pos;
-            
-            /// Placeholders are necessary to keep the table columns the proper width. It's only needed to fill out the first row.
-            function add_placeholding_els()
-            {
-                var placeholders = [],
-                    i,
-                    len = 3;
-                
-                for (i = 0; i < len; i += 1) {
-                    ///NOTE: We make it moveSAN to make the ellipse bold.
-                    ///NOTE: Don't add ellipse on checkmate (unless we're adding the placeholder earlier (i.e., we're black)).
-                    placeholders[i] = G.cde("div", {c: "moveCell moveSAN move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 && (color === "b" || san.slice(-1) !== "#") ? "\u2026" : "\u00a0"}); /// \u2026 is ellipse; \u00a0 is non-breaking space.
-                    rows[cur_row].row_el.appendChild(placeholders[i]);
-                }
-                
-                rows[cur_row].placeholders = placeholders;
-            }
-            
-            if (!rows[cur_row]) {
-                rows[cur_row] = {
-                    w: {},
-                    b: {},
-                    row_el: G.cde("div", {c: "moveRow"})
-                };
-                rows[cur_row].row_el.appendChild(G.cde("div", {c: "moveNumCell moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: (cur_row + 1)}));
-                moves_el.appendChild(rows[cur_row].row_el);
-                need_to_add_placeholders = plys.length === 0;
-            } else if (rows[cur_row].placeholders) {
-                rows[cur_row].placeholders.forEach(function (el)
-                {
-                    if (el && el.parentNode) {
-                        el.parentNode.removeChild(el);
-                    }
-                });
-                delete rows[cur_row].placeholders;
-            }
-            
-            if (need_to_add_placeholders && color === "b") {
-                add_placeholding_els();
-                need_to_add_placeholders = false;
-            }
-            
-            rows[cur_row].row_el.appendChild(move_data.san_el);
-            rows[cur_row].row_el.appendChild(move_data.eval_el);
-            rows[cur_row].row_el.appendChild(move_data.time_el);
-            
-            if (color === "w") {
-                add_placeholding_els();
-            }
-            
-            rows[cur_row][color] = move_data;
-            plys.push(move_data);
-            
-            if (color === "b") {
-                cur_row += 1;
-            }
-            
-            scroll_pos = container_el.scrollHeight - offset_height;
-            
-            /// Scroll to the bottom to reveal new move (if necessary).
-            if (scroll_pos) {
-                container_el.scrollTop = scroll_pos;
-            }
-        }
-        
-        function update_eval(ply, score, type, turn)
-        {
-            var move_data = plys[ply - 1],
-                display_score;
-            
-            if (type === "cp") {
-                display_score = (score / 100).toFixed(2);
-            } else if (score === 0) {
-                if (turn === "w") {
-                    display_score = "0-1";
-                } else {
-                    display_score = "1-0";
-                }
-            } else {
-                display_score = "#" + score;
-            }
-            
-            if (move_data) {
-                move_data.eval_el.textContent = display_score;
-            }
-        }
-        
-        function reset_moves()
-        {
-            moves_el.innerHTML = "";
-            cur_row = 0;
-            rows = [];
-            plys = [];
-        }
-        
-        function resize()
-        {
-            var this_box = container_el.getBoundingClientRect(),
-                cell_box,
-                old_display = container_el.style.display;
-                
-            ///NOTE: We need to hide this for a moment to see what the height of the cell should be.
-            container_el.style.display = "none";
-            cell_box = layout.rows[1].cells[2].getBoundingClientRect();
-            container_el.style.display = old_display;
-            
-            container_el.style.height = (cell_box.height - this_box.top) + "px";
-            
-            offset_height = container_el.offsetHeight;
-        }
-        
-        moves_manager = {
-            add_move: add_move,
-            update_eval: update_eval,
-            resize: resize,
-        };
-        
-        layout.rows[1].cells[2].appendChild(container_el);
-        container_el.appendChild(moves_el);
-        
-        G.events.attach("newGameBegins", reset_moves);
-        
-        reset_moves();
     }
     
     function hide_loading(do_not_start)
@@ -1989,7 +1790,7 @@
         
         create_center();
         
-        make_moves_el();
+        moves_manager = make_moves_el(layout.rows[1].cells[2], layout.rows[1].cells[2]);
         
         onresize();
         
@@ -2034,7 +1835,12 @@
             game_history[ply].move_time = board.players[color].last_move_time;
         }
         prep_eval(cur_pos_cmd, ply);
-        moves_manager.add_move(color, e.san, game_history[ply].move_time);
+        moves_manager.add_move({color: color, san: e.san, time: game_history[ply].move_time, ply: ply - 1, scoll_to_bottom: true});
+    });
+    
+    G.events.attach("newGameBegins", function onmove(e)
+    {
+        moves_manager.reset_moves();
     });
     
     init();

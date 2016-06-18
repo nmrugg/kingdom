@@ -3,6 +3,7 @@
     height: 100%;
     display: table;
     border: 2px solid #3c2d21;
+    border-spacing: 0;
     
     -webkit-touch-callout: none;
       -webkit-user-select: none;

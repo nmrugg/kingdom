@@ -15,6 +15,7 @@ var BOARD = function board_init(el, options)
         colors = ["blue", "red", "green", "yellow", "teal", "orange", "purple", "pink"],
         ///NOTE: These should match the CSS.
         rgba   = ["rgba(0, 0, 240, .6)", "rgba(240, 0, 0, .6)", "rgba(0, 240, 0, .6)", "rgba(240, 240, 0, .6)", "rgba(0, 240, 240, .6)", "rgba(240, 120, 0, .6)", "rgba(120, 0, 120, .6)", "rgba(240, 0, 240, .6)"],
+        rook_arrow_color = "rgba(0, 0, 240, .2)",
         cur_color = 0,
         capturing_clicks,
         legal_moves,
@@ -176,6 +177,7 @@ var BOARD = function board_init(el, options)
                             arrow_manager.delete_arrow(dragging_arrow.number);
                             delete dragging_arrow.cur_square;
                         }
+                        
                         if (dragging_arrow.start_square.rank !== rank || dragging_arrow.start_square.file !== file) {
                             dragging_arrow.number = arrow_manager.draw(dragging_arrow.start_square.rank, dragging_arrow.start_square.file, rank, file, rgba[cur_color])
                             dragging_arrow.cur_square = {rank: rank, file: file};
@@ -315,6 +317,12 @@ var BOARD = function board_init(el, options)
     
     function size_board(w, h)
     {
+        var h_snap = h % board.board_details.ranks,
+            w_snap = w % board.board_details.files;
+        
+        w -= w_snap;
+        h -= h_snap;
+        
         board_details.width  = parseFloat(w);
         board_details.height = parseFloat(h);
         
@@ -421,6 +429,8 @@ var BOARD = function board_init(el, options)
             id = 0,
             piece_count = 0,
             create_pieces;
+        
+        delete board.last_move;
         
         if (fen !== last_fen) {
             create_pieces = true;
@@ -577,7 +587,7 @@ var BOARD = function board_init(el, options)
         
         el = document.elementFromPoint(x, y);
         
-        if (el && el.className && el.classList.contains("square") || el.classList.contains("hoverSquare")) {
+        if (el && el.className && el.classList && el.classList.contains("square") || el.classList.contains("hoverSquare")) {
             rank_m = el.className.match(/rank(\d+)/);
             file_m = el.className.match(/file(\d+)/);
             
@@ -730,9 +740,11 @@ var BOARD = function board_init(el, options)
             
             legal_moves = null;
             
-            if (board.get_mode() === "play" && board.onmove) {
-                track_move(uci);
-                board.onmove(uci, san);
+            if (board.get_mode() === "play") {
+                track_move(uci, san);
+                if (board.onmove) {
+                    board.onmove(uci, san);
+                }
             }
             
             if (cb) {
@@ -752,7 +764,7 @@ var BOARD = function board_init(el, options)
         }
     }
     
-    function set_piece_pos(piece, square)
+    function set_piece_pos(piece, square, do_not_save)
     {
         if (!piece || !piece.el || !piece.el.style || !square) {
             return;
@@ -764,8 +776,10 @@ var BOARD = function board_init(el, options)
         piece.el.style.left = (square.file * 100) + "%";
         piece.el.style.right = -(square.file * 100) + "%";
         
-        piece.rank = square.rank;
-        piece.file = square.file;
+        if (!do_not_save) {
+            piece.rank = square.rank;
+            piece.file = square.file;
+        }
     }
     
     function get_san(uci)
@@ -806,7 +820,7 @@ var BOARD = function board_init(el, options)
         
         index = legal_moves.uci.indexOf(uci);
         
-        if (legal_moves.san[index].indexOf("e.p.") === -1 && legal_moves.san[index].indexOf("(ep)") === -1) {
+        if (legal_moves.san && legal_moves.san[index] && legal_moves.san[index].indexOf("e.p.") === -1 && legal_moves.san[index].indexOf("(ep)") === -1) {
             /// Add the notation after the move notation but before check(mate) symbol.
             ///NOTE: A pawn could check(mate) and en passant at the same time, but not promote.
             legal_moves.san[index] = legal_moves.san[index].substr(0, 4) + "e.p." + legal_moves.san[index].substr(4);
@@ -842,14 +856,12 @@ var BOARD = function board_init(el, options)
             }
             
             /// Is it castling?
-            ///NOTE: We must check substring because there could be a + or # after O-O or O-O-O.
-            ///NOTE: We must check for queenside castling first because "O-O" will also match "O-O-O".
-            if (san.substr(0, 5) === "O-O-O") { /// Queenside castle
-                rook = get_piece_from_rank_file(rook_rank, 0);
-                set_piece_pos(rook, {rank: rook_rank, file: 3});
-            } else if (san.substr(0, 3) === "O-O") { /// Kingside castle
+            if (san === "O-O" || san === "0-0") { /// Kingside castle
                 rook = get_piece_from_rank_file(rook_rank, board_details.files - 1);
                 set_piece_pos(rook, {rank: rook_rank, file: board_details.files - 3});
+            } else if (san === "O-O-O" || san === "0-0-0") { /// Queenside castle
+                rook = get_piece_from_rank_file(rook_rank, 0);
+                set_piece_pos(rook, {rank: rook_rank, file: 3});
             }
         } else if (board.get_mode() === "setup" && captured_piece) {
             /// The pieces should swap places.
@@ -903,6 +915,7 @@ var BOARD = function board_init(el, options)
         {
             ///NOTE: Since this is async, we need to store which piece was moved.
             promote_piece(piece, finalized_uci);
+            G.events.trigger("board_human_move", {color: piece.color});
         });
     }
     
@@ -910,8 +923,7 @@ var BOARD = function board_init(el, options)
     {
         var square,
             uci,
-            promoting,
-            piece;
+            promoting;
         
         if (board.dragging && board.dragging.piece) {
             square = get_dragging_hovering_square(e);
@@ -934,14 +946,8 @@ var BOARD = function board_init(el, options)
             /// If it wasn't deleted
             if (board.dragging.piece) {
                 prefix_css(board.dragging.piece.el, "transform", "none");
-                piece = board.dragging.piece;
-                /// Let the piece snap into place and then remove the dragging style.
-                setTimeout(function ()
-                {
-                    piece.el.classList.remove("dragging");
-                }, 11);
+                board.dragging.piece.el.classList.remove("dragging");
             }
-            
             board.el.classList.remove("dragging");
             
             delete board.dragging;
@@ -950,7 +956,7 @@ var BOARD = function board_init(el, options)
     
     function get_piece_img(piece)
     {
-        return "url(\"" + encodeURI("img/pieces/" + board.theme + "/" + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
+        return "url(\"" + encodeURI(board.pieces_path + board.theme + (board.theme ? "/" : "") + piece.color + piece.type + (board.theme_ext || ".svg")) + "\")";
     }
     
     function clear_board_extras()
@@ -963,12 +969,17 @@ var BOARD = function board_init(el, options)
     
     function set_board(fen)
     {
+        var matches;
+        
+        delete board.last_move;
+        
         fen = fen || get_init_pos();
         
         load_pieces_from_start(fen);
         
         board.pieces.forEach(function oneach(piece)
-        {if (!piece.el) {
+        {
+            if (!piece.el) {
                 piece.el = document.createElement("div");
                 
                 piece.el.classList.add("piece");
@@ -992,7 +1003,13 @@ var BOARD = function board_init(el, options)
         
         clear_board_extras();
         
-        board.turn = "w";
+        matches = fen.match(/^\S+ ([wb])/);
+        if (matches) {
+            board.turn = matches[1];
+        } else {
+            board.turn = "w";
+        }
+        
         board.moves = [];
         board.messy = false;
         
@@ -1017,6 +1034,7 @@ var BOARD = function board_init(el, options)
         board.el.classList.remove("settingUp");
         board.el.classList.add("playing");
         arrow_manager.el.classList.remove("waiting");
+        delete board.last_move;
     }
     
     function enable_setup()
@@ -1026,6 +1044,7 @@ var BOARD = function board_init(el, options)
         board.el.classList.remove("playing");
         board.el.classList.add("settingUp");
         arrow_manager.el.classList.remove("waiting");
+        delete board.last_move;
     }
     
     function get_piece_from_rank_file(rank, file)
@@ -1094,18 +1113,87 @@ var BOARD = function board_init(el, options)
         }
     }
     
-    function track_move(uci)
+    function track_move(uci, san)
     {
         board.moves.push(uci);
         switch_turn();
         clear_board_extras();
-        G.events.trigger("board_move", {uci: uci});
+        G.events.trigger("board_move", {uci: uci, san: san});
+        board.last_move = {uci: uci, san: san};
     }
     
-    function move(uci)
+    function move_backward(data)
     {
-        move_piece_uci(uci);
-        track_move(uci);
+        var cur_move_data,
+            moving_peice,
+            rook_data,
+            rook_peice;
+        /// First, set the fen to the previous (the move we're going to).
+        /// Then, move the peice(s) to where they were in the current move (or what was the current move).
+        /// Next move them back after a delay (so the CSS transition takes effect).
+        /// Finally draw the arrow for the previous move (if any).
+        
+        /// Step 1
+        board.set_board(data.prev_fen);
+        
+        /// Step 2
+        cur_move_data = split_uci(data.cur_uci);
+        if (cur_move_data) {
+            moving_peice = get_piece_from_rank_file(cur_move_data.starting.rank, cur_move_data.starting.file);
+            if (moving_peice) {
+                if (data.cur_san === "O-O" || data.cur_san === "0-0") {
+                    rook_data = {
+                        prev_file: board_details.files - 1,
+                        cur_file: cur_move_data.ending.file - 1
+                    };
+                } else if (data.cur_san === "O-O-O" || data.cur_san === "0-0-0") {
+                    rook_data = {
+                        prev_file: 0,
+                        cur_file: cur_move_data.ending.file + 1
+                    };
+                }
+                if (rook_data) {
+                    rook_peice = get_piece_from_rank_file(cur_move_data.starting.rank, rook_data.prev_file);
+                }
+                set_piece_pos(moving_peice, cur_move_data.ending, true);
+                if (rook_peice) {
+                    set_piece_pos(rook_peice, {rank: cur_move_data.starting.rank, file: rook_data.cur_file}, true);
+                }
+                /// Step 3
+                setTimeout(function ()
+                {
+                    /// Make sure it hasn't move in the mean time.
+                    if (moving_peice.rank === cur_move_data.starting.rank && moving_peice.file === cur_move_data.starting.file) {
+                        ///HACK: Try to force a reflow.
+                        window.getComputedStyle(moving_peice.el).top;
+                        set_piece_pos(moving_peice, cur_move_data.starting, true);
+                        if (rook_peice && rook_peice.rank === cur_move_data.starting.rank && rook_peice.file === rook_data.prev_file) {
+                            set_piece_pos(rook_peice, {rank: cur_move_data.starting.rank, file: rook_data.prev_file}, true);
+                        }
+                    }
+                }, 50);
+            }
+        }
+        
+        /// Step 4
+        if (data.prev_uci) {
+            arrow_manager.arrow_onmove({uci: data.prev_uci, san: data.prev_san});
+        }
+    }
+    
+    function move(data)
+    {
+        var san,
+            uci;
+        /// If it's a string, it's just a uci move. If it's an object, it is data for moving backward.
+        if (typeof data === "string") {
+            uci = data.toLowerCase();
+            san = get_san(uci);
+            move_piece_uci(uci);
+            track_move(uci, san);
+        } else {
+            move_backward(data);
+        }
     }
     
     function onkeydown(e)
@@ -1360,6 +1448,34 @@ var BOARD = function board_init(el, options)
         focus_checked_king(king);
     }
     
+    function get_mode()
+    {
+        return mode;
+    }
+    
+    function set_mode(new_mode)
+    {
+        var old_mode = mode;
+        if ((new_mode === "play" || new_mode === "setup") && typeof board.close_modular_window === "function") {
+            board.close_modular_window();
+        }
+        mode = new_mode;
+        G.events.trigger("board_mode_change", {old_move: old_mode, mode: new_mode});
+    }
+    
+    function monitor_mode_change(e)
+    {
+        if (e.mode === "setup") {
+            clear_board_extras();
+        }
+    }
+    
+    ///
+    /// Start creating board
+    ///
+    
+    options = options || {};
+    
     G.events.attach("board_set_legal_moves", check_highlight);
     
     arrow_manager = (function create_draw_arrow()
@@ -1468,8 +1584,8 @@ var BOARD = function board_init(el, options)
             
             proportion = (box1.width / 50);
             
-            create_arrow(box1.left + box1.width / 2 - canvas_left, box1.top + box1.height / 2 - canvas_top,
-                         box2.left + box2.width / 2 - canvas_left, box2.top + box2.height / 2 - canvas_top,
+            create_arrow(window.scrollX + box1.left + box1.width / 2 - canvas_left, window.scrollY + box1.top + box1.height / 2 - canvas_top,
+                         window.scrollX + box2.left + box2.width / 2 - canvas_left, window.scrollY + box2.top + box2.height / 2 - canvas_top,
                          {
                             fillStyle: color,
                             width:    box1.width / 5,
@@ -1478,7 +1594,7 @@ var BOARD = function board_init(el, options)
                          ///strokeStyle: "rgba(200,200,200,.4)",
                          });
             
-            return arrows.length - 1;
+            return do_not_add ? -1 : arrows.length - 1;
         }
         
         function remove_if_empty()
@@ -1531,8 +1647,8 @@ var BOARD = function board_init(el, options)
         function set_size()
         {
             var box = board.el.getBoundingClientRect();
-            canvas_left = box.left;
-            canvas_top = box.top;
+            canvas_left = box.left + window.scrollX;
+            canvas_top = box.top + window.scrollY;
             canvas.width = box.width;
             canvas.height = box.height;
             canvas.style.top = canvas_top + "px";
@@ -1573,8 +1689,27 @@ var BOARD = function board_init(el, options)
         
         function arrow_onmove(e)
         {
-            var uci_data = split_uci(e.uci);
+            var uci_data = split_uci(e.uci),
+                rook_data;
+            
             draw_arrow(uci_data.starting.rank, uci_data.starting.file, uci_data.ending.rank, uci_data.ending.file, rgba[0], true);
+            
+            /// Draw rook arrow on castling.
+            if (e.san === "O-O" || e.san === "0-0") {
+                rook_data = {
+                    start_file: board_details.files - 1,
+                    end_file: uci_data.ending.file - 1
+                };
+            } else if (e.san === "O-O-O" || e.san === "0-0-0") {
+                rook_data = {
+                    start_file: 0,
+                    end_file: uci_data.ending.file + 1
+                };
+            }
+            
+            if (rook_data) {
+                draw_arrow(uci_data.starting.rank, rook_data.start_file, uci_data.ending.rank, rook_data.end_file, rook_arrow_color, true);
+            }
         }
         
         function draw(rank1, file1, rank2, file2, color, auto)
@@ -1593,36 +1728,16 @@ var BOARD = function board_init(el, options)
             el: canvas,
             draw: draw,
             clear: clear,
-            delete_arrow: delete_arrow
+            delete_arrow: delete_arrow,
+            arrow_onmove: arrow_onmove,
         };
     }());
-    
-    function get_mode()
-    {
-        return mode;
-    }
-    
-    function set_mode(new_mode)
-    {
-        var old_mode = mode;
-        if ((new_mode === "play" || new_mode === "setup") && typeof board.close_modular_window === "function") {
-            board.close_modular_window();
-        }
-        mode = new_mode;
-        G.events.trigger("board_mode_change", {old_move: old_mode, mode: new_mode});
-    }
-    
-    function monitor_mode_change(e)
-    {
-        if (e.mode === "setup") {
-            clear_board_extras();
-        }
-    }
     
     board = {
         pieces: [],
         size_board: size_board,
-        theme: "default",
+        pieces_path: typeof options.pieces_path === "undefined" ? "img/pieces/" : options.pieces_path,
+        theme: typeof options.theme === "undefined" ? "default" : options.theme,
         wait: wait,
         play: play,
         enable_setup: enable_setup,
@@ -1642,7 +1757,9 @@ var BOARD = function board_init(el, options)
         get_fen: get_fen,
         board_details: board_details,
         highlight_colors: colors,
+        color_values: rgba,
         clear_highlights: clear_highlights,
+        remove_highlight: remove_highlight,
         highlight_square: highlight_square,
         set_legal_moves: set_legal_moves,
         get_legal_moves: get_legal_moves,
@@ -1651,6 +1768,8 @@ var BOARD = function board_init(el, options)
         set_mode: set_mode,
         get_san: get_san,
         create_modular_window: create_modular_window,
+        arrow_manager: arrow_manager,
+        split_uci: split_uci,
     /// onmove()
     /// onswitch()
     /// turn
@@ -1658,8 +1777,6 @@ var BOARD = function board_init(el, options)
     };
     
     G.events.attach("board_mode_change", monitor_mode_change);
-    
-    options = options || {};
     
     create_board(el, options.dim);
     
