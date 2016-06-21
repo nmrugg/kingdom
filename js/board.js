@@ -910,12 +910,25 @@ var BOARD = function board_init(el, options)
     
     function make_move(piece, square, uci, promoting)
     {
+        var oldRank = piece.rank;
+        var oldFile = piece.file;
+        
         move_piece(piece, square, uci);
         report_move(uci, promoting, piece, function onreport(finalized_uci)
         {
             ///NOTE: Since this is async, we need to store which piece was moved.
             promote_piece(piece, finalized_uci);
-            G.events.trigger("board_human_move", {color: piece.color});
+            G.events.trigger("board_human_move", {
+                color: piece.color,
+                oldRank: oldRank,
+                oldFile: oldFile,
+                rank: piece.rank,
+                file: piece.file,
+                type: piece.type,
+                promoted: promoting,
+                from: get_piece_start_square({rank: oldRank, file: oldFile}),
+                to: get_piece_start_square(piece),
+            });
         });
     }
     
@@ -935,7 +948,7 @@ var BOARD = function board_init(el, options)
                 make_move(board.dragging.piece, square, uci, promoting);
             } else {
                 /// Snap back.
-                if (board.get_mode() === "setup") {
+                if (board.get_mode() === "setup" && !board.noRemoving) {
                     remove_piece(board.dragging.piece);
                     /// We need to remove "dragging" to make the transitions work again.
                     board.dragging.piece.el.classList.remove("dragging");
@@ -967,6 +980,46 @@ var BOARD = function board_init(el, options)
         arrow_manager.clear();
     }
     
+    function add_piece(info)
+    {
+        var piece = {
+            color: info.color,
+            rank: info.rank,
+            file: info.file,
+            type: info.type,
+        };
+        var last_piece = board.pieces[board.pieces.length - 1];
+        
+        if (last_piece) {
+            piece.id = last_piece.id  + 1;
+        } else {
+            piece.id = 0;
+        }
+        
+        board.pieces.push(piece);
+        
+        insert_piece(piece);
+        
+        /// If the pieces were already on the board from a previous game, a pawn may have promoted.
+        set_image(piece);
+        
+        set_piece_pos(piece, {rank: piece.rank, file: piece.file});
+        
+        last_fen = get_fen();
+    }
+    
+    function insert_piece(piece)
+    {
+        piece.el = document.createElement("div");
+        
+        piece.el.classList.add("piece");
+        
+        add_piece_events(piece);
+        
+        /// We just put them all in the bottom left corner and move the position.
+        squares[0][0].appendChild(piece.el);
+    }
+    
     function set_board(fen)
     {
         var matches;
@@ -980,14 +1033,7 @@ var BOARD = function board_init(el, options)
         board.pieces.forEach(function oneach(piece)
         {
             if (!piece.el) {
-                piece.el = document.createElement("div");
-                
-                piece.el.classList.add("piece");
-                
-                add_piece_events(piece);
-                
-                /// We just put them all in the bottom left corner and move the position.
-                squares[0][0].appendChild(piece.el);
+                insert_piece(piece);
             }
             
             /// If the pieces were already on the board from a previous game, a pawn may have promoted.
@@ -1190,7 +1236,9 @@ var BOARD = function board_init(el, options)
             uci = data.toLowerCase();
             san = get_san(uci);
             move_piece_uci(uci);
-            track_move(uci, san);
+            if (board.get_mode() !== "setup") {
+                track_move(uci, san);
+            }
         } else {
             move_backward(data);
         }
@@ -1733,6 +1781,13 @@ var BOARD = function board_init(el, options)
         };
     }());
     
+    function clear()
+    {
+        clear_highlights()
+        
+        set_board("8/8/8/8/8/8/8/8 w - - 0 1");
+    }
+    
     board = {
         pieces: [],
         size_board: size_board,
@@ -1770,6 +1825,8 @@ var BOARD = function board_init(el, options)
         create_modular_window: create_modular_window,
         arrow_manager: arrow_manager,
         split_uci: split_uci,
+        add_piece: add_piece,
+        clear: clear,
     /// onmove()
     /// onswitch()
     /// turn
