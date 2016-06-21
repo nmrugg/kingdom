@@ -581,9 +581,8 @@ var BOARD = function board_init(el, options)
             square = {},
             rank_m,
             file_m,
-            /// Use the position of the middle of the piece being dragged, not necessarily the mouse cursor.
-            x = e.clientX + ((board.dragging.box.left + Math.round(board.dragging.box.width / 2)) - board.dragging.origin.x),
-            y = e.clientY + ((board.dragging.box.top + Math.round(board.dragging.box.height / 2)) - board.dragging.origin.y);
+            x = e.clientX,
+            y = e.clientY;
         
         el = document.elementFromPoint(x, y);
         
