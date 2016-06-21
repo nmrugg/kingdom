@@ -914,6 +914,7 @@
         
         for (i = 0; i < len; i += 1) {
             if (!answers[i].found) {
+                board.move(e.to + e.from);
                 return false;
             }
         }
@@ -1001,7 +1002,7 @@
         answers = getAllKnightMoves({rank: randRank, file: randFile});
     }
     
-    function isPathValid(validPaths, path, depth)
+    function indexOfPath(validPaths, path, depth)
     {
         var i;
         var len = validPaths.length;
@@ -1011,15 +1012,79 @@
             if (validPaths[i].length > depth && path.length > depth) {
                 if (validPaths[i][depth].rank === path[depth].rank && validPaths[i][depth].file === path[depth].file) {
                     if (depth === path.length - 1) {
-                        return true;
+                        return i;
                     } else {
-                        return isPathValid(validPaths, path, depth + 1);
+                        return indexOfPath(validPaths, path, depth + 1);
                     }
                 }
             }
         }
         
-        return false;
+        return -1;
+    }
+    
+    function checkKnightJumpWin(path)
+    {
+        var i;
+        var len = answers.length;
+        
+        function highlight_set_all(color)
+        {
+            answers.forEach(function (ans)
+            {
+                if (color) {
+                    board.highlight_square(ans.file, ans.rank, color);
+                } else {
+                    board.remove_highlight(ans.file, ans.rank);
+                }
+            });
+        }
+        
+        function moveBackToBegining()
+        {
+            currentMovePath = [];
+            var curPos = path[path.length - 1];
+            var curSq = "abcdefgh"[curPos.file] + (curPos.rank + 1);
+            var startSq = "abcdefgh"[answers.startFile] + (answers.startRank + 1);
+            board.move(curSq + startSq);            
+        }
+        
+        if (path.length !== answers[0].length) {
+            return false;
+        }
+        
+        for (i = 0; i < len; i += 1) {
+            if (!answers[i].found) {
+                moveBackToBegining();
+                return false;
+            }
+        }
+        
+        board.wait();
+        G.events.trigger("gamePaused");
+        return start_new();
+        setTimeout(function ()
+        {
+            highlight_set_all();
+            setTimeout(function ()
+            {
+                highlight_set_all("green");
+                setTimeout(function ()
+                {
+                    highlight_set_all();
+                    setTimeout(function ()
+                    {
+                        highlight_set_all("green");
+                        setTimeout(function ()
+                        {
+                            start_new();
+                        }, 300);
+                    }, 300);
+                }, 300);
+            }, 300);
+        }, 300);
+        
+        return true;
     }
     
     function watchKnightJump(e)
@@ -1031,6 +1096,7 @@
         var len = moves.length;
         console.log(moves)
         var isValid;
+        var pathIndex;
         
         /// Did it move squares?
         if (e.oldRank !== e.rank || e.oldFile !== e.file) {
@@ -1043,8 +1109,10 @@
             }
             if (isValid) {
                 currentMovePath.push({rank: e.rank, file: e.file});
-                if (isPathValid(answers, currentMovePath)) {
+                pathIndex = indexOfPath(answers, currentMovePath);
+                if (pathIndex > -1) {
                     color = "green";
+                    answers[pathIndex].found = true;
                 } else {
                     currentMovePath.pop();
                     isValid = false;
@@ -1053,7 +1121,9 @@
             }
         }
         
-        if (!isValid) {
+        if (isValid) {
+            checkKnightJumpWin(currentMovePath);
+        } else {
             board.move(e.to + e.from);
         }
     }
@@ -1128,6 +1198,8 @@
         
         currentMovePath = [];
         answers = solveKnightJump({startRank: startRank, startFile: startFile, endRank: endRank, endFile: endFile});
+        answers.startRank = startRank;
+        answers.startFile = startFile;
     }
     
     function start_new_game()
