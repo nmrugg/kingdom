@@ -30,7 +30,8 @@
     var layout = {};
     var default_sd_time = "15:00";
     var showing_loading;
-    var gameType = "knightSight";
+    var gameType = "standard";
+    var lastGameType;
     var answers;
     var currentMovePath;
     
@@ -873,6 +874,8 @@
         } else if (gameType === "knightJump") {
             startKnightJump();
         }
+        
+        lastGameType = gameType;
     }
     
     function getAllKnightMoves(options)
@@ -1211,7 +1214,7 @@
     
     function start_new_game()
     {
-        var dont_reset = board.get_mode() === "setup",
+        var dont_reset = lastGameType === "standard" && board.get_mode() === "setup",
             stop_new_game;
         
         show_loading();
@@ -1684,7 +1687,8 @@
         new_game_el = G.cde("button", {t: "New Game"}, {click: function () {start_new()}});
         setup_game_el = G.cde("button", {t: "Setup Game"}, {click: function () { init_setup}});
         var gameTypeSel = G.cde("Select", {oninput: changeType}, [
-            G.cde("option", {value: "knightSight", t: "Knight Sight", selected:"selected"}),
+            G.cde("option", {value: "standard", t: "Standard", selected:"selected"}),
+            G.cde("option", {value: "knightSight", t: "Knight Sight"}),
             G.cde("option", {value: "knightJump", t: "Knight Jump"}),
         ]);
         
