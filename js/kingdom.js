@@ -1000,6 +1000,7 @@
         
         board.enable_setup();
         G.events.trigger("gameUnpaused");
+        G.events.trigger("newGameBegins");
         
         answers = getAllKnightMoves({rank: randRank, file: randFile});
     }
@@ -1203,6 +1204,7 @@
         
         board.enable_setup();
         G.events.trigger("gameUnpaused");
+        G.events.trigger("newGameBegins");
         
         board.highlight_square(endFile, endRank, "blue");
         
