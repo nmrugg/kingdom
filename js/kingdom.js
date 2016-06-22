@@ -30,7 +30,7 @@
     var layout = {};
     var default_sd_time = "15:00";
     var showing_loading;
-    var gameType = "knightJump";
+    var gameType = "knightSight";
     var answers;
     var currentMovePath;
     
@@ -914,7 +914,6 @@
         
         for (i = 0; i < len; i += 1) {
             if (!answers[i].found) {
-                board.move(e.to + e.from);
                 return false;
             }
         }
@@ -1667,14 +1666,24 @@
         board.players.b.set_time_type("none");
     }
     
+    function changeType()
+    {
+        gameType = this.value;
+    }
+    
     function create_center()
     {
         new_game_el = G.cde("button", {t: "New Game"}, {click: function () {start_new()}});
         setup_game_el = G.cde("button", {t: "Setup Game"}, {click: function () { init_setup}});
+        var gameTypeSel = G.cde("Select", {oninput: changeType}, [
+            G.cde("option", {value: "knightSight", t: "Knight Sight", selected:"selected"}),
+            G.cde("option", {value: "knightJump", t: "Knight Jump"}),
+        ]);
         
         center_el.appendChild(G.cde("documentFragment", [
             new_game_el,
             setup_game_el,
+            gameTypeSel,
         ]));
         
         layout.rows[2].cells[1].appendChild(center_el);
