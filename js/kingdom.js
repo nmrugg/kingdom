@@ -1001,19 +1001,27 @@
         answers = getAllKnightMoves({rank: randRank, file: randFile});
     }
     
-    function indexOfPath(validPaths, path, depth)
+    function indexOfPath(validPaths, path, depth, selectedAnswer)
     {
-        var i;
+        var i = 0;
         var len = validPaths.length;
+        var deeperIndex;
+        if (typeof selectedAnswer === "number") {
+            i = selectedAnswer;
+            len = selectedAnswer + 1;
+        }
         depth = depth || 0;
         
-        for (i = 0; i < len; i += 1) {
-            if (validPaths[i].length > depth && path.length > depth) {
+        for (; i < len; i += 1) {
+            if (!validPaths[i].found && validPaths[i].length > depth && path.length > depth) {
                 if (validPaths[i][depth].rank === path[depth].rank && validPaths[i][depth].file === path[depth].file) {
                     if (depth === path.length - 1) {
                         return i;
                     } else {
-                        return indexOfPath(validPaths, path, depth + 1);
+                        deeperIndex = indexOfPath(validPaths, path, depth + 1, i);
+                        if (deeperIndex === i) {
+                            return i;
+                        }
                     }
                 }
             }
@@ -1093,7 +1101,6 @@
         var found_already;
         var moves = getAllKnightMoves({rank: e.oldRank, file: e.oldFile});
         var len = moves.length;
-        console.log(moves)
         var isValid;
         var pathIndex;
         
@@ -1111,7 +1118,9 @@
                 pathIndex = indexOfPath(answers, currentMovePath);
                 if (pathIndex > -1) {
                     color = "green";
-                    answers[pathIndex].found = true;
+                    if (currentMovePath.length === answers[0].length) {
+                        answers[pathIndex].found = true;
+                    }
                 } else {
                     currentMovePath.pop();
                     isValid = false;
@@ -1160,7 +1169,6 @@
                 currentPositions = nextPositions;
             }
         }
-        console.log(validPaths)
         return validPaths;
     }
     
