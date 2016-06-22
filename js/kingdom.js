@@ -23,13 +23,17 @@
     var legal_move_engine;
     var cur_pos_cmd;
     var game_history;
-    var eval_depth = 8;
+    var eval_depth = 12;
     var rating_font_style = "Impact,monospace,mono,sans-serif";
     var font_fit = FONT_FIT({fontFamily: rating_font_style});
     var moves_manager;
     var layout = {};
     var default_sd_time = "15:00";
     var showing_loading;
+    var gameType = "standard";
+    var lastGameType;
+    var answers;
+    var currentMovePath;
     
     function error(str)
     {
@@ -632,7 +636,7 @@
     {
         ///NOTE: Without time, it thinks really fast. So, we give it a something to make it move reasonably quickly.
         ///      This time is also tweaked based on the level.
-        var default_time = 1200 * 60, /// A bit more than 1 minute
+        var default_time = 1200 * 60, /// 1 minute
             wtime,
             btime,
             depth,
@@ -855,12 +859,367 @@
         }
     }
     
+    function start_new(whichType)
+    {
+        gameType = whichType || gameType;
+        
+        board.noRemoving = false;
+        G.events.detach("board_human_move", watchKnightSight);
+        G.events.detach("board_human_move", watchKnightJump);
+        
+        if (gameType === "standard") {
+            start_new_game();
+        } else if (gameType === "knightSight") {
+            startKnightSight();
+        } else if (gameType === "knightJump") {
+            startKnightJump();
+        }
+        
+        lastGameType = gameType;
+    }
+    
+    function getAllKnightMoves(options)
+    {
+        var ans = [];
+        var x;
+        var y;
+        
+        for (x = -2; x <= 2; x += 1) {
+            for (y = -2; y <= 2; y += 1) {
+                if (Math.abs(x) + Math.abs(y) === 3 && options.rank + y >= 0 && options.rank + y <= 7 && options.file + x >= 0 && options.file + x <= 7) {
+                    ans.push({
+                        rank: options.rank + y,
+                        file: options.file + x,
+                    });
+                }
+            }
+        }
+        
+        return ans;
+    }
+    
+    function checkKnightSightWin()
+    {
+        var i;
+        var len = answers.length;
+        
+        function highlight_set_all(color)
+        {
+            answers.forEach(function (ans)
+            {
+                if (color) {
+                    board.highlight_square(ans.file, ans.rank, color);
+                } else {
+                    board.remove_highlight(ans.file, ans.rank);
+                }
+            });
+        }
+        
+        for (i = 0; i < len; i += 1) {
+            if (!answers[i].found) {
+                return false;
+            }
+        }
+        
+        board.wait();
+        G.events.trigger("gamePaused");
+        
+        setTimeout(function ()
+        {
+            highlight_set_all();
+            setTimeout(function ()
+            {
+                highlight_set_all("green");
+                setTimeout(function ()
+                {
+                    highlight_set_all();
+                    setTimeout(function ()
+                    {
+                        highlight_set_all("green");
+                        setTimeout(function ()
+                        {
+                            start_new();
+                        }, 300);
+                    }, 300);
+                }, 300);
+            }, 300);
+        }, 300);
+        
+        return true;
+    }
+    
+    function watchKnightSight(e)
+    {
+        var color = "red";
+        var i;
+        var len = answers.length;
+        var found_already;
+        
+        /// Did it move squares?
+        if (e.oldRank !== e.rank || e.oldFile !== e.file) {
+            /// Is it a valid knight move?
+            for (i = 0; i < len; i += 1) {
+                if (answers[i].rank === e.rank && answers[i].file === e.file) {
+                    color = "green";
+                    if (answers[i].found) {
+                        found_already = true;
+                    } else {
+                        answers[i].found = true;
+                    }
+                    break;
+                }
+            }
+            if (!found_already) {
+                board.highlight_square(e.file, e.rank, color);
+            }
+            /// Move it back.
+            board.move(e.to + e.from);
+            checkKnightSightWin();
+        }
+    }
+    
+    function startKnightSight()
+    {
+        var randRank = G.rand(0, 7);
+        var randFile = G.rand(0, 7);
+        
+        stop_game();
+        
+        board.clear();
+        
+        board.noRemoving = true;
+        
+        board.add_piece({
+            color: "w",
+            rank: randRank,
+            file: randFile,
+            type: "n"
+        });
+        
+        G.events.attach("board_human_move", watchKnightSight);
+        
+        board.enable_setup();
+        G.events.trigger("gameUnpaused");
+        
+        answers = getAllKnightMoves({rank: randRank, file: randFile});
+    }
+    
+    function indexOfPath(validPaths, path, depth, selectedAnswer)
+    {
+        var i = 0;
+        var len = validPaths.length;
+        var deeperIndex;
+        if (typeof selectedAnswer === "number") {
+            i = selectedAnswer;
+            len = selectedAnswer + 1;
+        }
+        depth = depth || 0;
+        
+        for (; i < len; i += 1) {
+            if (!validPaths[i].found && validPaths[i].length > depth && path.length > depth) {
+                if (validPaths[i][depth].rank === path[depth].rank && validPaths[i][depth].file === path[depth].file) {
+                    if (depth === path.length - 1) {
+                        return i;
+                    } else {
+                        deeperIndex = indexOfPath(validPaths, path, depth + 1, i);
+                        if (deeperIndex === i) {
+                            return i;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return -1;
+    }
+    
+    function checkKnightJumpWin(path)
+    {
+        var i;
+        var len = answers.length;
+        
+        function highlight_set_all(color)
+        {
+            answers.forEach(function (ans)
+            {
+                if (color) {
+                    board.highlight_square(ans.file, ans.rank, color);
+                } else {
+                    board.remove_highlight(ans.file, ans.rank);
+                }
+            });
+        }
+        
+        function moveBackToBegining()
+        {
+            currentMovePath = [];
+            var curPos = path[path.length - 1];
+            var curSq = "abcdefgh"[curPos.file] + (curPos.rank + 1);
+            var startSq = "abcdefgh"[answers.startFile] + (answers.startRank + 1);
+            board.move(curSq + startSq);            
+        }
+        
+        if (path.length !== answers[0].length) {
+            return false;
+        }
+        
+        for (i = 0; i < len; i += 1) {
+            if (!answers[i].found) {
+                moveBackToBegining();
+                return false;
+            }
+        }
+        
+        board.wait();
+        G.events.trigger("gamePaused");
+        return start_new();
+        setTimeout(function ()
+        {
+            highlight_set_all();
+            setTimeout(function ()
+            {
+                highlight_set_all("green");
+                setTimeout(function ()
+                {
+                    highlight_set_all();
+                    setTimeout(function ()
+                    {
+                        highlight_set_all("green");
+                        setTimeout(function ()
+                        {
+                            start_new();
+                        }, 300);
+                    }, 300);
+                }, 300);
+            }, 300);
+        }, 300);
+        
+        return true;
+    }
+    
+    function watchKnightJump(e)
+    {
+        var color = "red";
+        var i;
+        var found_already;
+        var moves = getAllKnightMoves({rank: e.oldRank, file: e.oldFile});
+        var len = moves.length;
+        var isValid;
+        var pathIndex;
+        
+        /// Did it move squares?
+        if (e.oldRank !== e.rank || e.oldFile !== e.file) {
+            /// Is it a valid knight move?
+            for (i = 0; i < len; i += 1) {
+                if (moves[i].rank === e.rank && moves[i].file === e.file) {
+                    isValid = true;
+                    break;
+                }
+            }
+            if (isValid) {
+                currentMovePath.push({rank: e.rank, file: e.file});
+                pathIndex = indexOfPath(answers, currentMovePath);
+                if (pathIndex > -1) {
+                    color = "green";
+                    if (currentMovePath.length === answers[0].length) {
+                        answers[pathIndex].found = true;
+                    }
+                } else {
+                    currentMovePath.pop();
+                    isValid = false;
+                }
+                board.arrow_manager.draw(e.oldRank, e.oldFile, e.rank, e.file, board.color_values[board.highlight_colors.indexOf(color)])
+            }
+        }
+        
+        if (isValid) {
+            checkKnightJumpWin(currentMovePath);
+        } else {
+            board.move(e.to + e.from);
+        }
+    }
+    
+    function solveKnightJump(options)
+    {
+        var currentPositions = [{rank: options.startRank, file: options.startFile, path: []}];
+        var moves;        
+        /// Clear old answers
+        var validPaths = [];
+        var nextPositions;
+        var foundPath;
+        
+        for (;;) {
+            nextPositions = [];
+            currentPositions.forEach(function (pos)
+            {
+                moves = getAllKnightMoves(pos);
+                moves.forEach(function (move)
+                {
+                    var thisPath = [];
+                    thisPath = pos.path.concat([move]);
+                    if (move.rank === options.endRank && move.file === options.endFile) {
+                        foundPath = true;
+                        validPaths.push(thisPath);
+                    } else if (!foundPath) {
+                        nextPositions.push({path: thisPath, rank: move.rank, file: move.file});
+                    }
+                });
+            });
+            
+            if (foundPath) {
+                break;
+            } else {
+                currentPositions = nextPositions;
+            }
+        }
+        return validPaths;
+    }
+    
+    function startKnightJump()
+    {
+        var startRank = G.rand(0, 7);
+        var startFile = G.rand(0, 7);
+        var endRank = G.rand(0, 7);
+        var endFile = G.rand(0, 7);
+        
+        if (startRank === endRank && startFile === endFile) {
+            return startKnightJump();
+        }
+        
+        stop_game();
+        
+        board.clear();
+        
+        board.noRemoving = true;
+        
+        board.add_piece({
+            color: "w",
+            rank: startRank,
+            file: startFile,
+            type: "n"
+        });
+        
+        G.events.attach("board_human_move", watchKnightJump);
+        
+        board.enable_setup();
+        G.events.trigger("gameUnpaused");
+        
+        board.highlight_square(endFile, endRank, "blue");
+        
+        currentMovePath = [];
+        answers = solveKnightJump({startRank: startRank, startFile: startFile, endRank: endRank, endFile: endFile});
+        answers.startRank = startRank;
+        answers.startFile = startFile;
+    }
+    
     function start_new_game()
     {
-        var dont_reset = board.get_mode() === "setup",
+        var dont_reset = lastGameType === "standard" && board.get_mode() === "setup",
             stop_new_game;
         
         show_loading();
+        
+        G.events.detach("board_human_move", watchKnightSight);
         
         new_game_el.textContent = "New Game";
         setup_game_el.disabled = false;
@@ -1318,14 +1677,25 @@
         board.players.b.set_time_type("none");
     }
     
+    function changeType()
+    {
+        gameType = this.value;
+    }
+    
     function create_center()
     {
-        new_game_el = G.cde("button", {t: "New Game"}, {click: start_new_game});
-        setup_game_el = G.cde("button", {t: "Setup Game"}, {click: init_setup});
+        new_game_el = G.cde("button", {t: "New Game"}, {click: function () {start_new()}});
+        setup_game_el = G.cde("button", {t: "Setup Game"}, {click: function () { init_setup}});
+        var gameTypeSel = G.cde("Select", {oninput: changeType}, [
+            G.cde("option", {value: "standard", t: "Standard", selected:"selected"}),
+            G.cde("option", {value: "knightSight", t: "Knight Sight"}),
+            G.cde("option", {value: "knightJump", t: "Knight Jump"}),
+        ]);
         
         center_el.appendChild(G.cde("documentFragment", [
             new_game_el,
             setup_game_el,
+            gameTypeSel,
         ]));
         
         layout.rows[2].cells[1].appendChild(center_el);
@@ -1689,7 +2059,7 @@
                 }
             }
             
-            moves_manager.update_eval(e.ply, e.score, e.type, e.turn);
+            moves_manager.update_eval(e);
         });
         
         return obj;
@@ -1699,205 +2069,6 @@
     {
         /// \u2011 is a non-breaking hyphen (useful for O-O-O).
         return san.replace(/-/g, "\u2011");
-    }
-    
-    function make_moves_el()
-    {
-        var moves_el = G.cde("div", {c: "movesTable"}),
-            container_el = G.cde("div", {c: "movesTableContainer"}),
-            rows,
-            plys,
-            cur_row,
-            offset_height;
-        
-        function format_move_time(time)
-        {
-            var res,
-                sec,
-                min,
-                hour,
-                day;
-            
-            time = parseFloat(time);
-            
-            if (time < 0) {
-                time = 0;
-            }
-            
-            if (time < 100) { /// Less than 1 sec
-                res = time + "ms";
-            } else if (time < 1000) { /// Less than 1 sec
-                res = ((Math.round(time / 100)) / 10) + "s";
-            } else if (time < 60000) { /// Less than 1 minute
-                res = Math.round(time / 1000) + "s";
-            } else if (time < 3600000) { /// Less than 1 hour
-                /// Always floor since we don't want to round to 60.
-                sec = Math.floor((time % 60000) / 1000);
-                min = Math.floor(time / 60000);
-                res = min + "m" + sec + "s";
-            } else if (time < 86400000) { /// Less than 1 day
-                /// Always floor since we don't want to round to 60.
-                sec  = Math.floor((time % 60000) / 1000);
-                hour = Math.floor(time / 60000);
-                min  = Math.floor(hour % 60);
-                hour = (hour - min) / 60;
-                
-                res = hour + "h" + min + "m" + sec + "s";
-                
-            } else { /// Days
-                ///NOTE: NaN is always falsey, so it will come here. We check this here so that we don't need to waste time checking eariler.
-                if (isNaN(time)) {
-                    return "Error";
-                }
-                /// Always floor since we don't want to round to 60.
-                sec  = Math.floor((time % 60000) / 1000);
-                hour = Math.floor(time / 60000);
-                min  = Math.floor(hour % 60);
-                hour = (hour - min) / 60;
-                day = Math.floor(hour / 24);
-                hour = hour % 24;
-                
-                res = day + "d" + hour + "h" + min + "m" + sec + "s";
-            }
-            
-            return res;
-        }
-        
-        function add_move(color, san, time)
-        {
-            var move_data = {
-                san: san,
-                color: color,
-                time: time,
-                san_el:  G.cde("div", {c: "moveCell moveSAN move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: clean_san(san)}),
-                eval_el: G.cde("div", {c: "moveCell moveEval move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: "\u00a0"}), /// \u00a0 is &nbsp;
-                time_el: G.cde("div", {c: "moveCell moveTime move" + color + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: typeof time === "number" ? format_move_time(time) : "\u00a0"}),
-            },
-                need_to_add_placeholders,
-                scroll_pos;
-            
-            /// Placeholders are necessary to keep the table columns the proper width. It's only needed to fill out the first row.
-            function add_placeholding_els()
-            {
-                var placeholders = [],
-                    i,
-                    len = 3;
-                
-                for (i = 0; i < len; i += 1) {
-                    ///NOTE: We make it moveSAN to make the ellipse bold.
-                    ///NOTE: Don't add ellipse on checkmate (unless we're adding the placeholder earlier (i.e., we're black)).
-                    placeholders[i] = G.cde("div", {c: "moveCell moveSAN move" + (color === "w" ? "b" : "w") + " moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: i === 0 && (color === "b" || san.slice(-1) !== "#") ? "\u2026" : "\u00a0"}); /// \u2026 is ellipse; \u00a0 is non-breaking space.
-                    rows[cur_row].row_el.appendChild(placeholders[i]);
-                }
-                
-                rows[cur_row].placeholders = placeholders;
-            }
-            
-            if (!rows[cur_row]) {
-                rows[cur_row] = {
-                    w: {},
-                    b: {},
-                    row_el: G.cde("div", {c: "moveRow"})
-                };
-                rows[cur_row].row_el.appendChild(G.cde("div", {c: "moveNumCell moveRow" + (cur_row % 2 ? "Even" : "Odd"), t: (cur_row + 1)}));
-                moves_el.appendChild(rows[cur_row].row_el);
-                need_to_add_placeholders = plys.length === 0;
-            } else if (rows[cur_row].placeholders) {
-                rows[cur_row].placeholders.forEach(function (el)
-                {
-                    if (el && el.parentNode) {
-                        el.parentNode.removeChild(el);
-                    }
-                });
-                delete rows[cur_row].placeholders;
-            }
-            
-            if (need_to_add_placeholders && color === "b") {
-                add_placeholding_els();
-                need_to_add_placeholders = false;
-            }
-            
-            rows[cur_row].row_el.appendChild(move_data.san_el);
-            rows[cur_row].row_el.appendChild(move_data.eval_el);
-            rows[cur_row].row_el.appendChild(move_data.time_el);
-            
-            if (color === "w") {
-                add_placeholding_els();
-            }
-            
-            rows[cur_row][color] = move_data;
-            plys.push(move_data);
-            
-            if (color === "b") {
-                cur_row += 1;
-            }
-            
-            scroll_pos = container_el.scrollHeight - offset_height;
-            
-            /// Scroll to the bottom to reveal new move (if necessary).
-            if (scroll_pos) {
-                container_el.scrollTop = scroll_pos;
-            }
-        }
-        
-        function update_eval(ply, score, type, turn)
-        {
-            var move_data = plys[ply - 1],
-                display_score;
-            
-            if (type === "cp") {
-                display_score = (score / 100).toFixed(2);
-            } else if (score === 0) {
-                if (turn === "w") {
-                    display_score = "0-1";
-                } else {
-                    display_score = "1-0";
-                }
-            } else {
-                display_score = "#" + score;
-            }
-            
-            if (move_data) {
-                move_data.eval_el.textContent = display_score;
-            }
-        }
-        
-        function reset_moves()
-        {
-            moves_el.innerHTML = "";
-            cur_row = 0;
-            rows = [];
-            plys = [];
-        }
-        
-        function resize()
-        {
-            var this_box = container_el.getBoundingClientRect(),
-                cell_box,
-                old_display = container_el.style.display;
-                
-            ///NOTE: We need to hide this for a moment to see what the height of the cell should be.
-            container_el.style.display = "none";
-            cell_box = layout.rows[1].cells[2].getBoundingClientRect();
-            container_el.style.display = old_display;
-            
-            container_el.style.height = (cell_box.height - this_box.top) + "px";
-            
-            offset_height = container_el.offsetHeight;
-        }
-        
-        moves_manager = {
-            add_move: add_move,
-            update_eval: update_eval,
-            resize: resize,
-        };
-        
-        layout.rows[1].cells[2].appendChild(container_el);
-        container_el.appendChild(moves_el);
-        
-        G.events.attach("newGameBegins", reset_moves);
-        
-        reset_moves();
     }
     
     function hide_loading(do_not_start)
@@ -1989,7 +2160,7 @@
         
         create_center();
         
-        make_moves_el();
+        moves_manager = make_moves_el(layout.rows[1].cells[2], layout.rows[1].cells[2]);
         
         onresize();
         
@@ -2002,7 +2173,7 @@
             evaler.send("isready", function onready()
             {
                 if (board.get_mode() === "wait") {
-                    start_new_game();
+                    start_new();
                 }
             });
         });
@@ -2011,7 +2182,7 @@
     window.addEventListener("keydown", function catch_key(e)
     {
         if (e.keyCode === 113) { /// F2
-            start_new_game();
+            start_new();
         }
     });
     
@@ -2034,7 +2205,12 @@
             game_history[ply].move_time = board.players[color].last_move_time;
         }
         prep_eval(cur_pos_cmd, ply);
-        moves_manager.add_move(color, e.san, game_history[ply].move_time);
+        moves_manager.add_move({color: color, san: e.san, time: game_history[ply].move_time, ply: ply - 1, scoll_to_bottom: true});
+    });
+    
+    G.events.attach("newGameBegins", function onmove(e)
+    {
+        moves_manager.reset_moves();
     });
     
     init();
