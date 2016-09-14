@@ -1687,7 +1687,7 @@
     function create_center()
     {
         new_game_el = G.cde("button", {t: "New Game"}, {click: function () {start_new()}});
-        setup_game_el = G.cde("button", {t: "Setup Game"}, {click: function () { init_setup}});
+        setup_game_el = G.cde("button", {t: "Setup Game"}, {click: function () {init_setup()}});
         var gameTypeSel = G.cde("Select", {oninput: changeType}, [
             G.cde("option", {value: "standard", t: "Standard", selected:"selected"}),
             G.cde("option", {value: "knightSight", t: "Knight Sight"}),
