@@ -95,3 +95,7 @@ html, body {
 .center_table, .center_td {
     width: 0;
 }
+
+.gameInfoText {
+    margin-left: 5px;
+}

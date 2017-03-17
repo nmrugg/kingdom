@@ -14,6 +14,7 @@
     var rating_slider;
     var new_game_el;
     var setup_game_el;
+    var game_info_text;
     var starting_new_game;
     var retry_move_timer;
     var clock_manager;
@@ -863,6 +864,8 @@
     {
         gameType = whichType || gameType;
         
+        game_info_text.textContent = "";
+        
         board.noRemoving = false;
         G.events.detach("board_human_move", watchKnightSight);
         G.events.detach("board_human_move", watchKnightJump);
@@ -1034,6 +1037,19 @@
         return -1;
     }
     
+    function updateKnightJumpText()
+    {
+        var found = 0;
+        
+        answers.forEach(function (answer)
+        {
+            if (answer.found) {
+                found += 1;
+            }
+        });
+        game_info_text.textContent = found + "/" + answers.length;
+    }
+    
     function checkKnightJumpWin(path)
     {
         var i;
@@ -1124,6 +1140,7 @@
                     color = "green";
                     if (currentMovePath.length === answers[0].length) {
                         answers[pathIndex].found = true;
+                        updateKnightJumpText();
                     }
                 } else {
                     currentMovePath.pop();
@@ -1144,7 +1161,6 @@
     {
         var currentPositions = [{rank: options.startRank, file: options.startFile, path: []}];
         var moves;        
-        /// Clear old answers
         var validPaths = [];
         var nextPositions;
         var foundPath;
@@ -1212,6 +1228,7 @@
         answers = solveKnightJump({startRank: startRank, startFile: startFile, endRank: endRank, endFile: endFile});
         answers.startRank = startRank;
         answers.startFile = startFile;
+        updateKnightJumpText();
     }
     
     function start_new_game()
@@ -1688,6 +1705,7 @@
     {
         new_game_el = G.cde("button", {t: "New Game"}, {click: function () {start_new()}});
         setup_game_el = G.cde("button", {t: "Setup Game"}, {click: function () {init_setup()}});
+        game_info_text = G.cde("span", {c: "gameInfoText"});
         var gameTypeSel = G.cde("Select", {oninput: changeType}, [
             G.cde("option", {value: "standard", t: "Standard", selected:"selected"}),
             G.cde("option", {value: "knightSight", t: "Knight Sight"}),
@@ -1698,6 +1716,7 @@
             new_game_el,
             setup_game_el,
             gameTypeSel,
+            game_info_text,
         ]));
         
         layout.rows[2].cells[1].appendChild(center_el);
