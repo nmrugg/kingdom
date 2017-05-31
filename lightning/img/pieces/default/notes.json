@@ -1,0 +1,110 @@
+{
+    "br.svg": {
+        "title": "Chess rdt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_rdt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Dark rook on transparent square, default size 45x45"
+    },
+    "bn.svg": {
+        "title": "Chess ndt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_ndt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Dark knight on transparent square, default size 45x45"
+    },
+    "bb.svg": {
+        "title": "Chess bdt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_bdt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Dark bishop on transparent square, default size 45x45"
+    },
+    "bq.svg": {
+        "title": "Chess qdt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_qdt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Dark queen on transparent square, default size 45x45"
+    },
+    "bk.svg": {
+        "title": "Chess kdt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_kdt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Dark king on transparent square, default size 45x45"
+    },
+    "bp.svg": {
+        "title": "Chess pdt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_pdt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Dark pawn on transparent square, default size 45x45"
+    },
+    "wp.svg": {
+        "title": "Chess plt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_plt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Light pawn on transparent square, default size 45x45"
+    },
+    "wr.svg": {
+        "title": "Chess rlt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_rlt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Light rook on transparent square, default size 45x45"
+    },
+    "wn.svg": {
+        "title": "Chess nlt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_nlt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Light knight on transparent square, default size 45x45"
+    },
+    "wb.svg": {
+        "title": "Chess blt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_blt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Light bishop on transparent square, default size 45x45"
+    },
+    "wq.svg": {
+        "title": "Chess qlt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_qlt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Light queen on transparent square, default size 45x45"
+    },
+    "wk.svg": {
+        "title": "Chess klt45.svg",
+        "link": "https://en.wikipedia.org/wiki/File:Chess_klt45.svg",
+        "download_link": "http://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg",
+        "date": "27 December 2006",
+        "author": "Cburnett",
+        "license": "cc by-sa 3.0, bsd",
+        "description": "Light king on transparent square, default size 45x45"
+    }
+}
