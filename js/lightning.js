@@ -8,6 +8,7 @@
      * Using PerlinNoise class
      * Using Point class
      * @see http://jsdo.it/akm2/fhMC
+     * @copyright 2012-10-21 09:13:28 MIT License
      */
     
     var CHILD_NUM = 1;
@@ -720,7 +721,7 @@
             /**
              * Catmull-Rom Spline Curve
              * 
-             * @see http://l00oo.oo00l.com/blog/archives/264
+             * @see https://web.archive.org/web/20130324041945/http://l00oo.oo00l.com/blog/archives/264
              */
             function catmullRom(p0, p1, p2, p3, t) {
                 var v0 = (p2 - p0) / 2;
@@ -758,6 +759,7 @@
          * LightPoint
          * 
          * @super Point http://jsdo.it/akm2/fhMC
+         * @copyright 2012-10-21 09:13:28 MIT License
          */
         function LightPoint(x, y, radius) {
             this.x = x;

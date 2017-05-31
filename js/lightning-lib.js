@@ -1,3 +1,10 @@
+/**
+ * PerlinNoise class
+ * Point class
+ * @see http://jsdo.it/akm2/fhMC
+ * @archive https://web.archive.org/web/20160724034526/http://jsdo.it/akm2/fhMC
+ * @copyright 2012-10-21 09:13:28 MIT License
+ */
 (function(global) {
 
 if (!global.LIGHTNING) {
@@ -234,7 +241,7 @@ var Xorshift = (function() {
     /**
      * Random numbers generator
      * 
-     * @see http://baagoe.com/en/RandomMusings/javascript/
+     * @see https://web.archive.org/web/20100712063034/http://baagoe.com/en/RandomMusings/javascript/
      */
     
     function Xorshift() {
