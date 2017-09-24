@@ -22,7 +22,10 @@ var BOARD = function board_init(el, options)
         arrow_manager,
         dragging_arrow = {},
         mode = "setup",
-        last_fen;
+        last_fen,
+        fastDrag,
+        setInitialDraggingPosition,
+        isFlipped = false;
     
     function num_to_alpha(num)
     {
@@ -43,6 +46,18 @@ var BOARD = function board_init(el, options)
             return document.getElementById(el);
         }
         return el;
+    }
+    
+    function flip(force)
+    {
+        if ((isFlipped && force !== true) || force === false) {
+            board.el.classList.remove("flipped");
+            isFlipped = false;
+        } else {
+            board.el.classList.add("flipped");
+            isFlipped = true;
+        }
+        size_board(board_details.width, board_details.height);
     }
     
     function get_init_pos()
@@ -504,11 +519,17 @@ var BOARD = function board_init(el, options)
         }
     }
     
+    function select_piece(rank, file)
+    {
+        focus_piece_for_moving(get_piece_from_rank_file(rank, file));
+    }
+    
     function focus_piece_for_moving(piece)
     {
         board.clicked_piece = {piece: piece};
         focus_square(piece.file, piece.rank, "green");
         show_legal_moves(piece);
+        G.events.trigger("focus_piece", {piece: {rank: piece.rank, file: piece.file, color: piece.color, type: piece.type}});
     }
     
     function add_piece_events(piece)
@@ -520,11 +541,20 @@ var BOARD = function board_init(el, options)
                 fix_touch_event(e);
                 board.dragging = {};
                 board.dragging.piece = piece;
-                board.dragging.origin = {x: e.clientX, y: e.clientY};
                 board.dragging.box = piece.el.getBoundingClientRect();
+                board.dragging.origin = {x: e.clientX, y: e.clientY};
                 
+                board.dragging.offset = {
+                    x: board.dragging.origin.x - (board.dragging.box.left + (board.dragging.box.width /2)),
+                    y: board.dragging.origin.y - (board.dragging.box.top + (board.dragging.box.height /2))
+                };
                 board.el.classList.add("dragging");
                 board.dragging.piece.el.classList.add("dragging");
+                fastDrag = 0;
+                setInitialDraggingPosition = setTimeout(function ()
+                {
+                    onmousemove(e)
+                }, 300);
             }
             if (e.preventDefault) {
                 /// Prevent the cursor from becoming an I beam.
@@ -552,8 +582,11 @@ var BOARD = function board_init(el, options)
         piece.el.addEventListener("touchstart", onpiece_mouse_down);
     }
     
-    function prefix_css(el, prop, value)
+    function css_transform(el, prop, value)
     {
+        if (isFlipped) {
+            value += " rotateZ(180deg)";
+        }
         el.style[prop] = value;
         el.style["Webkit" + prop[0].toUpperCase() + prop.substr(1)] = value;
         el.style["O" + prop[0].toUpperCase() + prop.substr(1)] = value;
@@ -563,13 +596,30 @@ var BOARD = function board_init(el, options)
     
     function onmousemove(e)
     {
+        var x, y;
         /// If the user held the ctrl button and then clicked off of the browser, it will still be marked as capturing. We remove that here.
         if (capturing_clicks && !e.ctrlKey) {
             stop_capturing_clicks();
         }
         if (board.dragging && board.dragging.piece) {
             fix_touch_event(e);
-            prefix_css(board.dragging.piece.el, "transform", "translate(" + (e.clientX - board.dragging.origin.x) + "px," + (e.clientY - board.dragging.origin.y) + "px)");
+            x = e.clientX - board.dragging.origin.x + board.dragging.offset.x;
+            y = e.clientY - board.dragging.origin.y + board.dragging.offset.y;
+            if (isFlipped) {
+                x *= -1;
+                y *= -1;
+            }
+            css_transform(board.dragging.piece.el, "transform", "translate(" + x + "px," + y + "px)");
+            
+            if (!fastDrag) {
+                clearInterval(setInitialDraggingPosition);
+                fastDrag = setTimeout(function ()
+                {
+                    if (board.dragging && board.dragging.piece && board.dragging.piece.el) {
+                        board.dragging.piece.el.classList.add("fastDrag");
+                    }
+                }, 75);
+            }
         }
     }
     
@@ -586,7 +636,7 @@ var BOARD = function board_init(el, options)
         
         el = document.elementFromPoint(x, y);
         
-        if (el && el.className && el.classList && el.classList.contains("square") || el.classList.contains("hoverSquare")) {
+        if (el && (el.className && el.classList && el.classList.contains("square") || el.classList.contains("hoverSquare"))) {
             rank_m = el.className.match(/rank(\d+)/);
             file_m = el.className.match(/file(\d+)/);
             
@@ -927,6 +977,7 @@ var BOARD = function board_init(el, options)
                 promoted: promoting,
                 from: get_piece_start_square({rank: oldRank, file: oldFile}),
                 to: get_piece_start_square(piece),
+                uci: finalized_uci
             });
         });
     }
@@ -935,30 +986,45 @@ var BOARD = function board_init(el, options)
     {
         var square,
             uci,
-            promoting;
+            promoting,
+            piece;
         
         if (board.dragging && board.dragging.piece) {
             square = get_dragging_hovering_square(e);
             promoting = is_promoting(board.dragging.piece, square);
+            piece = board.dragging.piece;
             
-            uci = get_move(board.dragging.piece, square);
+            uci = get_move(piece, square);
             
             if (square && (board.get_mode() === "setup" || is_legal_move(uci))) {
-                make_move(board.dragging.piece, square, uci, promoting);
+                make_move(piece, square, uci, promoting);
             } else {
                 /// Snap back.
                 if (board.get_mode() === "setup" && !board.noRemoving) {
-                    remove_piece(board.dragging.piece);
+                    remove_piece(piece);
                     /// We need to remove "dragging" to make the transitions work again.
-                    board.dragging.piece.el.classList.remove("dragging");
+                    piece.el.classList.remove("dragging");
+                    clearTimeout(fastDrag);
+                    piece.el.classList.remove("fastDrag");
                     delete board.dragging.piece;
                 }
             }
             
             /// If it wasn't deleted
             if (board.dragging.piece) {
-                prefix_css(board.dragging.piece.el, "transform", "none");
-                board.dragging.piece.el.classList.remove("dragging");
+                /// Make the piece immediately move (no bouncing)
+                piece.el.classList.add("snap");
+                setTimeout(function ()
+                {
+                    /// Re-enable smooth moving.
+                    piece.el.classList.remove("snap");
+                }, 10);
+                piece.el.style.transform = "";
+                piece.el.classList.remove("dragging");
+                /// Fast dragging is to set the initial position. It's not needed now.
+                clearTimeout(fastDrag);
+                piece.el.classList.remove("fastDrag");
+                
             }
             board.el.classList.remove("dragging");
             
@@ -1328,6 +1394,10 @@ var BOARD = function board_init(el, options)
         {
             return String(ones.length);
         });
+        
+        if (full) {
+            return fen + " " + board.turn;
+        }
         
         return fen;
     }
@@ -1764,7 +1834,10 @@ var BOARD = function board_init(el, options)
             return draw_arrow(rank1, file1, rank2, file2, color, auto);
         }
         
-        G.events.attach("board_resize", redraw);
+        G.events.attach("board_resize", function redrawDelayed()
+        {
+            setTimeout(redraw);
+        });
         
         G.events.attach("board_move", arrow_onmove);
         
@@ -1826,6 +1899,9 @@ var BOARD = function board_init(el, options)
         split_uci: split_uci,
         add_piece: add_piece,
         clear: clear,
+        clear_board_extras: clear_board_extras,
+        select_piece: select_piece,
+        flip: flip,
     /// onmove()
     /// onswitch()
     /// turn

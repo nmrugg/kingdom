@@ -77,7 +77,7 @@
             transition: all 200ms;
 }
 
-.mobile .piece {
+.mobile .piece, .piece.snap {
     -webkit-transition: none;
             transition: none;
 }
@@ -103,6 +103,13 @@
 }
 
 .piece.dragging {
+    z-index: 2!important;
+    
+    -webkit-transition: all 75ms;
+            transition: all 75ms;
+}
+
+.piece.fastDrag {
     z-index: 2!important;
     
     -webkit-transition: none!important;
@@ -302,4 +309,8 @@
 }
 .chess_board .dot_square_red:hover {
     background-color: rgba(240, 0, 0, .2);
+}
+
+.chess_board.flipped, .chess_board.flipped .piece, .chess_board.flipped .notation {
+    transform: rotateZ(180deg);
 }
