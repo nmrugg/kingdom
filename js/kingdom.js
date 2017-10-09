@@ -2049,7 +2049,7 @@
         obj.set_eval = function (value)
         {
             obj.value = Number(value);
-            slider_el.style.height = ((obj.m * obj.value) + 50) + "%";
+            slider_el.style.height = ((obj.m * Math.max(Math.min(obj.value, obj.max), obj.min)) + 50) + "%";
         };
         
         /// Set default.
