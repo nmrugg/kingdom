@@ -911,9 +911,9 @@
             answers.forEach(function (ans)
             {
                 if (color) {
-                    board.highlight_square(ans.file, ans.rank, color);
+                    board.highlight_square(ans.rank, ans.file, color);
                 } else {
-                    board.remove_highlight(ans.file, ans.rank);
+                    board.remove_highlight(ans.rank, ans.file);
                 }
             });
         }
@@ -973,7 +973,7 @@
                 }
             }
             if (!found_already) {
-                board.highlight_square(e.file, e.rank, color);
+                board.highlight_square(e.rank, e.file, color);
             }
             /// Move it back.
             board.move(e.to + e.from);
@@ -1060,9 +1060,9 @@
             answers.forEach(function (ans)
             {
                 if (color) {
-                    board.highlight_square(ans.file, ans.rank, color);
+                    board.highlight_square(ans.rank, ans.file, color);
                 } else {
-                    board.remove_highlight(ans.file, ans.rank);
+                    board.remove_highlight(ans.rank, ans.file);
                 }
             });
         }
@@ -1222,7 +1222,7 @@
         G.events.trigger("gameUnpaused");
         G.events.trigger("newGameBegins");
         
-        board.highlight_square(endFile, endRank, "blue");
+        board.highlight_square(endRank, endFile, "blue");
         
         currentMovePath = [];
         answers = solveKnightJump({startRank: startRank, startFile: startFile, endRank: endRank, endFile: endFile});
