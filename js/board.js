@@ -1587,6 +1587,22 @@ var BOARD = function board_init(el, options)
         }
     }
     
+
+    function fixHiDPI(context) {
+        var backingStore = context.backingStorePixelRatio ||
+            context.webkitBackingStorePixelRatio ||
+            context.mozBackingStorePixelRatio ||
+            context.msBackingStorePixelRatio ||
+            context.oBackingStorePixelRatio ||
+            context.backingStorePixelRatio || 1;
+        var scaleVal = (window.devicePixelRatio || 1) / backingStore;
+        
+        console.log(scaleVal);
+        context.scale(scaleVal, scaleVal);
+        
+        return context;
+    }
+    
     ///
     /// Start creating board
     ///
@@ -1842,7 +1858,7 @@ var BOARD = function board_init(el, options)
         G.events.attach("board_move", arrow_onmove);
         
         canvas.className = "boardArrows";
-        ctx = canvas.getContext("2d");
+        ctx = fixHiDPI(canvas.getContext("2d"));
         
         return {
             el: canvas,
